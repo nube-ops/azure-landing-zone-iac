@@ -1,0 +1,12 @@
+# Azure Bicep Parameter files containing local environment/subscription IDs
+*.bicepparam
+
+# Local environment configuration or secret files
+.env
+*.local
+
+# Visual Studio Code workspace settings
+.vscode/
+
+# Azure CLI / PowerShell login or cache tokens
+.azure/
