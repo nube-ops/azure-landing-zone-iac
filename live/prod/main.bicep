@@ -1,5 +1,11 @@
 targetScope = 'tenant'
 
+param connectivitySubscriptionIds array = []
+param identitySubscriptionIds array = []
+param managementSubscriptionIds array = []
+param corpSubscriptionIds array = []
+param onlineSubscriptionIds array = []
+
 // 1. Organization Root
 module orgRoot '../../modules/management-groups/managementGroup.bicep' = {
   name: 'deploy-org-root'
@@ -72,5 +78,48 @@ module managementMg '../../modules/management-groups/managementGroup.bicep' = {
     mgName: 'mg-contoso-us-management'
     mgDisplayName: 'Contoso US Management'
     parentMgId: platformMg.outputs.mgId
+  }
+}
+
+// 4. Subscription Association
+// Landing Zones Branch
+module corpSubAssoc '../../modules/management-groups/subscriptionAssociation.bicep' = {
+  name: 'deploy-corp-sub-assoc'
+  params: {
+    managementGroupId: corpMg.outputs.mgId
+    subscriptionIds: corpSubscriptionIds
+  }
+}
+
+module onlineSubAssoc '../../modules/management-groups/subscriptionAssociation.bicep' = {
+  name: 'deploy-online-sub-assoc'
+  params: {
+    managementGroupId: onlineMg.outputs.mgId
+    subscriptionIds: onlineSubscriptionIds
+  }
+}
+
+// Platform Branch
+module connectivitySubAssoc '../../modules/management-groups/subscriptionAssociation.bicep' = {
+  name: 'deploy-connectivity-sub-assoc'
+  params: {
+    managementGroupId: connectivityMg.outputs.mgId
+    subscriptionIds: connectivitySubscriptionIds
+  }
+}
+
+module identitySubAssoc '../../modules/management-groups/subscriptionAssociation.bicep' = {
+  name: 'deploy-identity-sub-assoc'
+  params: {
+    managementGroupId: identityMg.outputs.mgId
+    subscriptionIds: identitySubscriptionIds
+  }
+}
+
+module managementSubAssoc '../../modules/management-groups/subscriptionAssociation.bicep' = {
+  name: 'deploy-management-sub-assoc'
+  params: {
+    managementGroupId: managementMg.outputs.mgId
+    subscriptionIds: managementSubscriptionIds
   }
 }
