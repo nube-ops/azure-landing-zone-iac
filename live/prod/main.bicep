@@ -4,8 +4,8 @@ targetScope = 'tenant'
 module orgRoot '../../modules/management-groups/managementGroup.bicep' = {
   name: 'deploy-org-root'
   params: {
-    mgName: 'mg-nube-us'
-    mgDisplayName: 'Nube US Organization Root'
+    mgName: 'mg-contoso-us'
+    mgDisplayName: 'Contoso US Organization Root'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${tenant().tenantId}'
   }
 }
@@ -14,8 +14,8 @@ module orgRoot '../../modules/management-groups/managementGroup.bicep' = {
 module landingZones '../../modules/management-groups/managementGroup.bicep' = {
   name: 'deploy-landing-zones'
   params: {
-    mgName: 'mg-nube-us-landingzones'
-    mgDisplayName: 'Nube US Landing Zones'
+    mgName: 'mg-contoso-us-landingzones'
+    mgDisplayName: 'Contoso US Landing Zones'
     parentMgId: orgRoot.outputs.mgId
   }
 }
@@ -23,8 +23,8 @@ module landingZones '../../modules/management-groups/managementGroup.bicep' = {
 module corpMg '../../modules/management-groups/managementGroup.bicep' = {
   name: 'deploy-corp'
   params: {
-    mgName: 'mg-nube-us-corp'
-    mgDisplayName: 'Nube US Corp'
+    mgName: 'mg-contoso-us-corp'
+    mgDisplayName: 'Contoso US Corp'
     parentMgId: landingZones.outputs.mgId
   }
 }
@@ -32,8 +32,8 @@ module corpMg '../../modules/management-groups/managementGroup.bicep' = {
 module onlineMg '../../modules/management-groups/managementGroup.bicep' = {
   name: 'deploy-online'
   params: {
-    mgName: 'mg-nube-us-online'
-    mgDisplayName: 'Nube US Online'
+    mgName: 'mg-contoso-us-online'
+    mgDisplayName: 'Contoso US Online'
     parentMgId: landingZones.outputs.mgId
   }
 }
@@ -42,8 +42,8 @@ module onlineMg '../../modules/management-groups/managementGroup.bicep' = {
 module platformMg '../../modules/management-groups/managementGroup.bicep' = {
   name: 'deploy-platform'
   params: {
-    mgName: 'mg-nube-us-platform'
-    mgDisplayName: 'Nube US Platform'
+    mgName: 'mg-contoso-us-platform'
+    mgDisplayName: 'Contoso US Platform'
     parentMgId: orgRoot.outputs.mgId
   }
 }
@@ -51,8 +51,8 @@ module platformMg '../../modules/management-groups/managementGroup.bicep' = {
 module connectivityMg '../../modules/management-groups/managementGroup.bicep' = {
   name: 'deploy-connectivity'
   params: {
-    mgName: 'mg-nube-us-connectivity'
-    mgDisplayName: 'Nube US Connectivity'
+    mgName: 'mg-contoso-us-connectivity'
+    mgDisplayName: 'Contoso US Connectivity'
     parentMgId: platformMg.outputs.mgId
   }
 }
@@ -60,8 +60,8 @@ module connectivityMg '../../modules/management-groups/managementGroup.bicep' = 
 module identityMg '../../modules/management-groups/managementGroup.bicep' = {
   name: 'deploy-identity'
   params: {
-    mgName: 'mg-nube-us-identity'
-    mgDisplayName: 'Nube US Identity'
+    mgName: 'mg-contoso-us-identity'
+    mgDisplayName: 'Contoso US Identity'
     parentMgId: platformMg.outputs.mgId
   }
 }
@@ -69,8 +69,8 @@ module identityMg '../../modules/management-groups/managementGroup.bicep' = {
 module managementMg '../../modules/management-groups/managementGroup.bicep' = {
   name: 'deploy-management'
   params: {
-    mgName: 'mg-nube-us-management'
-    mgDisplayName: 'Nube US Management'
+    mgName: 'mg-contoso-us-management'
+    mgDisplayName: 'Contoso US Management'
     parentMgId: platformMg.outputs.mgId
   }
 }
