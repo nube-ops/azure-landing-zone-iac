@@ -176,6 +176,7 @@ if ($isLoggedIn) {
     gh secret list --repo "$GitHubOwner/$GitHubRepository"
 } else {
     Write-Host "`n[WARNING] GitHub CLI is not authenticated." -ForegroundColor Red
+    Write-Host "If 'gh' is not installed, review the script description (Get-Help .\New-ContosoManagementGroupDeployer.ps1) for installation steps." -ForegroundColor Yellow
     Write-Host "To enable automatic secret syncing, run 'gh auth login' using the following options:" -ForegroundColor Yellow
     Write-Host "  1. Where do you use GitHub? -> GitHub.com" -ForegroundColor Cyan
     Write-Host "  2. Preferred protocol -> HTTPS" -ForegroundColor Cyan

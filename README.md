@@ -35,19 +35,25 @@ Tenant Root Group
 
 azure-landing-zone-iac/
 │
-├── .github/workflows/          # CI/CD pipelines (Linting & Deployment)
-├── live/
+├── .github/
+│   └── workflows/              # CI/CD pipelines (Deployment automation)
+├── environments/               # Environment-specific orchestrations
+│   ├── dev/
 │   └── prod/
 │       ├── main.bicep          # Tenant-level entry point orchestration
-│       ├── main.bicepparam     # Parameter file for production environment
+│       ├── main.bicepparam     # Production parameter file
 │       └── main.bicepparam.example # Template parameter reference
-├── modules/
+├── modules/                    # Reusable, DRY Bicep modules
+│   ├── governance/             # Compliance, security benchmarks, policies, & tagging
 │   ├── key-vault/              # Key Vault deployment modules
 │   ├── landing-zones/          # Landing zone specific configurations
-│   ├── management-groups/      # Reusable management group & association modules
-│   └── policies/               # Azure Policy definitions and assignments
+│   └── management-groups/      # Reusable management group & subscription association modules
+├── scripts/
+│   └── bootstrap/
+│       └── New-ContosoManagementGroupDeployer.ps1 # Idempotent OIDC & automated secret sync script
 ├── .gitignore
 └── README.md
+
 
 ⚙️ Prerequisites
 
@@ -56,17 +62,21 @@ Permissions:
 Tenant Root Group Owner or User Access Administrator permissions at the Azure AD Tenant root scope (/) to create top-level Management Groups.
 
 Tools:
-Azure CLI (v2.20.0 or higher)
-Bicep CLI ( installed automatically with recent Azure CLI versions)
+-Azure CLI (v2.20.0 or higher)
+-GitHub CLI (gh) for automated secret synchronization and developer authentication  
+-Bicep CLI (installed automatically with recent Azure CLI versions)  
 
 🚀 Deployment Instructions
 Step 1: Run the Bootstrap Script (Identity & OIDC Setup)
-Before running Bicep deployments from GitHub Actions, execute the idempotent bootstrap script locally. This auto-discovers your subscription and git remote context, provisions the deployment resource group (rg-mgmt-identity-cus-01), creates a User-Assigned Managed Identity, configures GitHub OIDC federation, and assigns the necessary Management Group Contributor role at the tenant root.
+Execute the idempotent bootstrap script locally from your repository root:
+```powershell
+.\scripts\bootstrap\New-ContosoManagementGroupDeployer.ps1
 
-cd scripts/bootstrap
-.\New-ContosoManagementGroupDeployer.ps1
-
-Note: Store the output values (AZURE_CLIENT_ID, AZURE_TENANT_ID, TENANT_ROOT_MANAGEMENT_GROUP_ID) as GitHub Environment secrets.
+What this script does automatically:
+-Auto-discovers your active Azure subscription and local Git remote context.   
+-Provisions the deployment resource group (rg-mgmt-identity-cus-01), User-Assigned Managed Identity, and OIDC federated credentials.   
+-Assigns the Management Group Contributor role at the tenant root scope.   
+-Developer Experience (DevEx) & Security: If you are logged into the GitHub CLI (gh auth status), it automatically syncs the required configuration secrets (AZURE_CLIENT_ID, AZURE_TENANT_ID, TENANT_ROOT_MANAGEMENT_GROUP_ID) directly to your GitHub repository. If unauthenticated, it gracefully displays secure terminal instructions and prints values for manual setup while performing live Azure resource verification[cite: 6].   
 
 Step 2: Configure Parameters for Bicep Deployment
 Navigate to the production environment directory and configure your subscription parameter file:
