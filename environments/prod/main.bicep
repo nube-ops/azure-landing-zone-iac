@@ -6,6 +6,19 @@ param managementSubscriptionIds array = []
 param corpSubscriptionIds array = []
 param onlineSubscriptionIds array = []
 
+@description('The list of allowed enterprise regions for resource deployment')
+param allowedLocations array = [
+  'eastus'
+  'westus2'
+]
+
+@description('Mandatory tags to enforce across all child subscriptions')
+param requiredTags array = [
+  'Owner'
+  'Environment'
+  'CostCenter'
+]
+
 // 1. Organization Root
 module orgRoot '../../modules/management-groups/managementGroup.bicep' = {
   name: 'deploy-org-root'
@@ -81,7 +94,30 @@ module managementMg '../../modules/management-groups/managementGroup.bicep' = {
   }
 }
 
-// 4. Subscription Association
+// 4. Governance & Compliance Layer (Targeting the Root Management Group Statically)
+module geoComplianceInitiative '../../modules/governance/geo-compliance-initiative.bicep' = {
+  name: 'deploy-geo-compliance-initiative'
+  scope: managementGroup('mg-contoso-us')
+  params: {
+    allowedLocations: allowedLocations
+    effect: 'Deny'
+  }
+}
+
+module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
+  name: 'deploy-tagging-initiative'
+  scope: managementGroup('mg-contoso-us')
+  params: {
+    requiredTags: requiredTags
+  }
+}
+
+module securityBenchmarkAssignment '../../modules/governance/microsoft-cloud-security-benchmark.bicep' = {
+  name: 'deploy-security-benchmark-assignment'
+  scope: managementGroup('mg-contoso-us')
+}
+
+// 5. Subscription Association
 // Landing Zones Branch
 module corpSubAssoc '../../modules/management-groups/subscriptionAssociation.bicep' = {
   name: 'deploy-corp-sub-assoc'

@@ -7,12 +7,36 @@ on:
     branches: [ main ]
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
-  what-if:
+  validate:
+    name: Validate Bicep
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Bicep Files
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az bicep build --file environments/prod/main.bicep
+            az bicep lint --file environments/prod/main.bicep
+
+  what-if:
+    name: Tenant What-If Dry Run
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: contoso-production
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      TENANT_ROOT_MANAGEMENT_GROUP_ID: ${{ secrets.TENANT_ROOT_MANAGEMENT_GROUP_ID }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -20,15 +44,15 @@ jobs:
       - name: Authenticate to Azure via OIDC
         uses: azure/login@v2
         with:
-          client-id: a446683b-9732-45a3-aa99-167c1a62e7bf
-          tenant-id: eb3308e2-722e-44f9-99d6-c0f4ca5af1eb
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
 
       - name: Run Tenant What-If Dry Run
-        uses: azure/CLI@v1
+        uses: azure/cli@v2
         with:
           inlineScript: |
             az deployment tenant what-if \
               --location centralus \
-              --template-file live/prod/main.bicep \
-              --parameters live/prod/main.bicepparam
+              --template-file environments/prod/main.bicep \
+              --parameters environments/prod/main.bicepparam
