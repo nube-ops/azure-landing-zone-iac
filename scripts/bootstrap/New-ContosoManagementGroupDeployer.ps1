@@ -7,25 +7,22 @@
     Management Group Contributor permissions at the tenant root. Automatically 
     discovers your Azure subscription and GitHub repository context if not supplied.
 
-    If you want to autosave secrets to GitHub automatically, perform the following. 
-    Otherwise, skip ahead to the examples for manual configuration:
+    If you want to autosave secrets to GitHub automatically, perform the following 
+    authentication steps first:
     
     1. If the GitHub CLI ('gh') is not installed, install it via:
         winget install --id GitHub.Cli
     
-    2. If installed in an active session, refresh your terminal path (or restart your terminal):
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-    
-    3. Log in and configure authentication by running `gh auth login`, then select:
+    2. Run `gh auth login` and select the following options:
         - Where do you use GitHub? -> GitHub.com
         - Preferred protocol -> HTTPS
         - Authenticate Git with your credentials? -> Yes
         - How would you like to authenticate? -> Login with a web browser
-        - MFA -> Yes (if prompted)
+        - Follow the generated link, enter your one-time device code, authorize, and complete MFA if prompted
     
     Once authenticated, the script will automatically synchronize the required configuration 
-    secrets directly to your repository. If not, it gracefully outputs the values to the 
-    terminal for manual setup.
+    secrets directly to your repository and verify them. If unauthenticated, it gracefully 
+    warns you and outputs the configuration values to the terminal for manual setup.
 .EXAMPLE
     # Run with fully automated local context discovery:
     .\New-ContosoManagementGroupDeployer.ps1
@@ -153,25 +150,51 @@ if (-not $existingRole) {
 # 8. Output Required GitHub Secrets & Optional Auto-Configuration
 $tenantId = ((az account show --query tenantId --output tsv).Trim())
 
-Write-Output "AZURE_CLIENT_ID=$clientId"
-Write-Output "AZURE_TENANT_ID=$tenantId"
-Write-Output "TENANT_ROOT_MANAGEMENT_GROUP_ID=$TenantRootManagementGroupId"
-
-# Automatically upload to GitHub Secrets using script parameters if GitHub CLI (gh) is available
+# Check if authenticated with GitHub CLI first
+$isLoggedIn = $false
 if (Get-Command gh -ErrorAction SilentlyContinue) {
-    Write-Host "`nSyncing secrets to GitHub repository: $GitHubOwner/$GitHubRepository..." -ForegroundColor Cyan
     try {
-        $clientId | gh secret set AZURE_CLIENT_ID --repo "$GitHubOwner/$GitHubRepository"
-        $tenantId | gh secret set AZURE_TENANT_ID --repo "$GitHubOwner/$GitHubRepository"
-        $TenantRootManagementGroupId | gh secret set TENANT_ROOT_MANAGEMENT_GROUP_ID --repo "$GitHubOwner/$GitHubRepository"
-        
-        Write-Host "Successfully synchronized secrets to $GitHubOwner/$GitHubRepository!" -ForegroundColor Green
+        $null = gh auth status 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $isLoggedIn = $true
+        }
     } catch {
-        Write-Warning "Could not automatically set GitHub secrets. Ensure you are authenticated via 'gh auth login'."
+        $isLoggedIn = $false
     }
-} else {
-    Write-Host "`nGitHub CLI ('gh') not found. Please add the values above to your GitHub repository secrets manually." -ForegroundColor Yellow
 }
+
+if ($isLoggedIn) {
+    Write-Host "`nSyncing secrets to GitHub repository: $GitHubOwner/$GitHubRepository..." -ForegroundColor Cyan
+    
+    $clientId | gh secret set AZURE_CLIENT_ID --repo "$GitHubOwner/$GitHubRepository"
+    $tenantId | gh secret set AZURE_TENANT_ID --repo "$GitHubOwner/$GitHubRepository"
+    $TenantRootManagementGroupId | gh secret set TENANT_ROOT_MANAGEMENT_GROUP_ID --repo "$GitHubOwner/$GitHubRepository"
+    
+    Write-Host "Successfully synchronized secrets to $GitHubOwner/$GitHubRepository!" -ForegroundColor Green
+    
+    Write-Host "`nVerifying active GitHub repository secrets..." -ForegroundColor Cyan
+    gh secret list --repo "$GitHubOwner/$GitHubRepository"
+} else {
+    Write-Host "`n[WARNING] GitHub CLI is not authenticated." -ForegroundColor Red
+    Write-Host "To enable automatic secret syncing, run 'gh auth login' using the following options:" -ForegroundColor Yellow
+    Write-Host "  1. Where do you use GitHub? -> GitHub.com" -ForegroundColor Cyan
+    Write-Host "  2. Preferred protocol -> HTTPS" -ForegroundColor Cyan
+    Write-Host "  3. Authenticate Git with your credentials? -> Yes" -ForegroundColor Cyan
+    Write-Host "  4. How would you like to authenticate? -> Login with a web browser" -ForegroundColor Cyan
+    Write-Host "     (Follow the link, enter your one-time code, authorize, and complete MFA if prompted)" -ForegroundColor Cyan
+    Write-Host "`nExecute this script again after logging in to automatically sync secrets." -ForegroundColor Yellow
+    
+    Write-Host "`nManual Secret Configuration Values:" -ForegroundColor Yellow
+    Write-Output "AZURE_CLIENT_ID=$clientId"
+    Write-Output "AZURE_TENANT_ID=$tenantId"
+    Write-Output "TENANT_ROOT_MANAGEMENT_GROUP_ID=$TenantRootManagementGroupId"
+}
+
+# Visual Azure Resource Verification
+Write-Host "`nVerifying deployed Azure Resource Group and Managed Identity..." -ForegroundColor Cyan
+az group list --query "[?name=='$ResourceGroupName']" --output table
+az identity list --resource-group $ResourceGroupName --output table
+
 Write-Host "`n==========================================================" -ForegroundColor Green
 Write-Host "Bootstrap complete!" -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
