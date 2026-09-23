@@ -95,7 +95,7 @@ module managementMg '../../modules/management-groups/managementGroup.bicep' = {
 }
 
 // 4. Governance & Compliance Layer (Targeting the Root Management Group Statically)
-module geoComplianceInitiative '../../modules/governance/geo-compliance-initiative.bicep' = {
+module geoComplianceInitiative '../../modules/governance/geoComplianceInitiative.bicep' = {
   name: 'deploy-geo-compliance-initiative'
   scope: managementGroup('mg-contoso-us')
   params: {
@@ -104,7 +104,7 @@ module geoComplianceInitiative '../../modules/governance/geo-compliance-initiati
   }
 }
 
-module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
+module taggingInitiative '../../modules/governance/taggingInitiative.bicep' = {
   name: 'deploy-tagging-initiative'
   scope: managementGroup('mg-contoso-us')
   params: {
@@ -112,7 +112,7 @@ module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
   }
 }
 
-module securityBenchmarkAssignment '../../modules/governance/microsoft-cloud-security-benchmark.bicep' = {
+module securityBenchmarkAssignment '../../modules/governance/microsoftCloudSecurityBenchmark.bicep' = {
   name: 'deploy-security-benchmark-assignment'
   scope: managementGroup('mg-contoso-us')
 }

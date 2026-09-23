@@ -76,7 +76,7 @@ What this script does automatically:
 -Auto-discovers your active Azure subscription and local Git remote context.   
 -Provisions the deployment resource group (rg-mgmt-identity-cus-01), User-Assigned Managed Identity, and OIDC federated credentials.   
 -Assigns the Management Group Contributor role at the tenant root scope.   
--Developer Experience (DevEx) & Security: If you are logged into the GitHub CLI (gh auth status), it automatically syncs the required configuration secrets (AZURE_CLIENT_ID, AZURE_TENANT_ID, TENANT_ROOT_MANAGEMENT_GROUP_ID) directly to your GitHub repository. If unauthenticated, it gracefully displays secure terminal instructions and prints values for manual setup while performing live Azure resource verification[cite: 6].   
+-Developer Experience (DevEx) & Security: If you are logged into the GitHub CLI (gh auth status), it automatically syncs the required configuration secrets (AZURE_CLIENT_ID, AZURE_TENANT_ID, TENANT_ROOT_MANAGEMENT_GROUP_ID) directly to your GitHub repository. If unauthenticated, it gracefully displays secure terminal instructions and prints values for manual setup while performing live Azure resource verification.   
 
 Step 2: Configure Parameters for Bicep Deployment
 Navigate to the production environment directory and configure your subscription parameter file:
