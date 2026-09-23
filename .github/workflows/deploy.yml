@@ -30,7 +30,6 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: ubuntu-latest
-    environment: contoso-production
     permissions:
       id-token: write
       contents: read
