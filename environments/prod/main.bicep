@@ -6,10 +6,18 @@ param managementSubscriptionIds array = []
 param corpSubscriptionIds array = []
 param onlineSubscriptionIds array = []
 
-@description('The list of allowed enterprise regions for resource deployment')
-param allowedLocations array = [
-  'centralus'
-  'eastus2'
+@description('Enterprise regions configuration mapping locations to short codes and primary/failover roles')
+param regionalConfig array = [
+  {
+    location: 'centralus'
+    regionCode: 'cus'
+    isPrimary: true
+  }
+  {
+    location: 'eastus2'
+    regionCode: 'eus2'
+    isPrimary: false
+  }
 ]
 
 @description('Mandatory tags to enforce across all child subscriptions')
@@ -84,7 +92,7 @@ module geoComplianceInitiative '../../modules/governance/geoComplianceInitiative
   name: 'deploy-geo-compliance-initiative'
   scope: managementGroup('mg-contoso-us')
   params: {
-    allowedLocations: allowedLocations
+    allowedLocations: [for region in regionalConfig: region.location]
     effect: 'Deny'
   }
   dependsOn: [managementGroupsModule]
