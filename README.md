@@ -6,33 +6,27 @@ Designed for tenant-level deployments, this codebase automates enterprise govern
 
 🏗️ Architecture Topology
 The deployment establishes a hierarchical Management Group structure rooted at the tenant level, separating platform governance from application landing zones-
-
-Tenant Root Group
-└── mg-contoso-us (Organization Root)
-├── mg-contoso-us-platform
-│   ├── mg-contoso-us-connectivity
-│   │   └── sub-contoso-us-connectivity (Subscription)
-│   │       ├── rg-net-hub-prod-cus-01        # Core Hub VNet, Azure Firewall, VPN Gateways
-│   │       └── rg-net-telemetry-prod-cus-01  # Network Analytics, Flow Logs, & Traffic Insights
-│   ├── mg-contoso-us-identity
-│   │   └── sub-contoso-us-identity (Subscription)
-│   │       ├── rg-core-identity-cus-01       # Core Domain Controllers & Directory Sync
-│   │       └── rg-mgmt-identity-cus-01       # CI/CD Bootstrap, UMI, & OIDC Trust Foundation
-│   └── mg-contoso-us-management
-│       └── sub-contoso-us-management (Subscription)
-│           └── rg-mgmt-logs-prod-cus-01      # Central Log Analytics, Automation, & Monitor Dashboards
-└── mg-contoso-us-landingzones
-.   ├── mg-contoso-us-corp
-.   │   └── sub-contoso-us-corp (Subscription)
-.   │       ├── rg-corp-workloads-prod-cus-01 # Internal Line-of-Business Application Workloads
-.   │       └── rg-corp-data-prod-cus-01      # Backend Databases & Persistent Storage Tiers
-.   └── mg-contoso-us-online
-.       └── sub-contoso-us-online (Subscription)
-.           ├── rg-online-web-prod-cus-01     # Public-Facing Web Apps & Microservices
-.           └── rg-online-edge-prod-cus-01    # Application Gateways, CDNs, & Front-End Routing
-
+```text
+Tenant Root Group 
+ ├── mg-contoso-us (Organization Root)
+ │    ├── mg-contoso-us-platform
+ │    │    ├── mg-contoso-us-connectivity (Subscription)
+ │    │    │    └── rg-net-hub-prod-cus-01 # Core Hub VNet, Azure Firewall, VPN Gateways
+ │    │    ├── mg-contoso-us-identity (Subscription)
+ │    │    │    ├── rg-core-identity-cus-01 # Core Domain Controllers & Directory Sync
+ │    │    │    └── rg-mgmt-identity-cus-01 # CI/CD Bootstrap, UMI, & OIDC Trust Foundation
+ │    │    └── mg-contoso-us-management (Subscription)
+ │    │         └── rg-mgmt-logs-prod-cus-01 # Central Log Analytics, Automation, & Monitor Dashboards
+ │    └── mg-contoso-us-landingzones
+ │         ├── mg-contoso-us-corp (Subscription)
+ │         │    ├── rg-corp-workloads-prod-cus-01 # Internal Line-of-Business Application Workloads
+ │         │    └── rg-corp-data-prod-cus-01 # Backend Databases & Persistent Storage Tiers
+ │         └── mg-contoso-us-online (Subscription)
+ │              ├── rg-online-web-prod-cus-01 # Public-Facing Web Apps & Microservices
+ │              └── rg-online-edge-prod-cus-01 # Application Gateways, CDNs, & Front-End Routing
+```
 📁 Repository Structure
-
+```text
 azure-landing-zone-iac/
 │
 ├── .github/
@@ -53,7 +47,7 @@ azure-landing-zone-iac/
 │       └── New-ContosoManagementGroupDeployer.ps1 # Idempotent OIDC & automated secret sync script
 ├── .gitignore
 └── README.md
-
+```
 
 ⚙️ Prerequisites
 Before executing this deployment, ensure you have the following permissions and tools configured:
