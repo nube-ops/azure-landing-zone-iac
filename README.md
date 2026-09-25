@@ -56,9 +56,9 @@ Permissions:
 -Tenant Root Group Owner or User Access Administrator permissions at the Azure AD Tenant root scope (/) to create top-level Management Groups.
 
 Tools:
--Azure CLI (v2.20.0 or higher)
--GitHub CLI (gh) for automated secret synchronization and developer authentication  
--Bicep CLI (installed automatically with recent Azure CLI versions)  
+* Azure CLI (v2.20.0 or higher)
+* GitHub CLI (gh) for automated secret synchronization and developer authentication  
+* Bicep CLI (installed automatically with recent Azure CLI versions)  
 
 🚀 Deployment Instructions
 Step 1: Run the Bootstrap Script (Identity, Preflight Diagnostics & OIDC Setup)
@@ -71,7 +71,7 @@ Execute the zero-touch, highly secure, and idempotent bootstrap script locally f
 * **Intelligent Context Auto-Discovery:** Dynamically detects your active Azure Subscription ID, Tenant ID, and local Git remote metadata (Owner/Repository) seamlessly.
 * **Resilient Transient Error Handling:** Built using a reusable retry wrapper helper function (`Invoke-WithRetry`) to gracefully ride out cloud and API network blips.
 * **Advanced Security & Modern OIDC Federation:** Resolves immutable GitHub user and repository numeric IDs via the GitHub API to configure secure OpenID Connect (OIDC) federated credentials (`api://AzureADTokenExchange`), preventing common deployment authentication failures (`AADSTS700213`).
-* **Idempotent Upsert Architecture:** Safely checks for existing Resource Groups, User-Assigned Managed Identities (UMI), federated credentials, and tenant root role assignments to prevent duplicate creations.
+* **Idempotent Tenant Root RBAC & Upsert Architecture:** Safely checks for and provisions required resources (Resource Groups, User-Assigned Managed Identities, OIDC credentials, and tenant-root least-privilege role assignments) to ensure that once executed, the deployment principal is fully authorized to orchestrate the downstream management group hierarchy and governance policies.
 * **Automated Secret Syncing (Zero-Touch CI/CD):** Authenticates via the GitHub CLI to automatically push required configuration secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `TENANT_ROOT_MANAGEMENT_GROUP_ID`) straight into your GitHub repository settings.
 * **Live Visual Verification:** Outputs formatted tabular Azure resource verifications and active repository secret lists upon completion for transparent auditing.
 
@@ -85,8 +85,8 @@ Step 3: Execute the Infrastructure DeploymentBecause this template deploys resou
   --parameters main.bicepparam
 
 🔒 Security & Best Practices
--Zero Hardcoded Secrets: All environment-specific subscription IDs, client IDs, and names are injected dynamically via parameters or parameter files.
--Idempotent Automation: PowerShell bootstrap scripts utilize defensive, state-aware checking to ensure safe, repeatable multi-run execution without manual state cleanup.
--Secure CI/CD Authentication: Avoids long-lived client secrets by leveraging GitHub OIDC Federated Credentials for secure, token-based cloud deployment.
--Modularization ("Don't Repeat Yourself"): Reusable modules decouple logic from configuration, minimizing code duplication and reducing human error.
--Least Privilege: Follows CAF guidelines for separating management concerns into dedicated administrative boundaries.
+* Zero Hardcoded Secrets: All environment-specific subscription IDs, client IDs, and names are injected dynamically via parameters or parameter files.
+* Idempotent Automation: PowerShell bootstrap scripts utilize defensive, state-aware checking to ensure safe, repeatable multi-run execution without manual state cleanup.
+* Secure CI/CD Authentication: Avoids long-lived client secrets by leveraging GitHub OIDC Federated Credentials for secure, token-based cloud deployment.
+* Modularization ("Don't Repeat Yourself"): Reusable modules decouple logic from configuration, minimizing code duplication and reducing human error.
+* Least Privilege: Follows CAF guidelines for separating management concerns into dedicated administrative boundaries.
