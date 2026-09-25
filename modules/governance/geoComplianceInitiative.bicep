@@ -8,8 +8,8 @@ param initiativeDescription string = 'Enforces organization-wide geo-compliance 
 
 @description('The shared list of allowed locations for your enterprise deployment.')
 param allowedLocations array = [
-  'eastus'
-  'westus2'
+  'centralus'
+  'eastus2'
 ]
 
 @description('The policy effect applied when a resource or resource group is created outside allowed regions.')
