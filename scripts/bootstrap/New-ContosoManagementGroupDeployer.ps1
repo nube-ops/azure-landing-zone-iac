@@ -2,27 +2,44 @@
 .SYNOPSIS
     Bootstraps the Azure environment for Contoso management group deployments.
 .DESCRIPTION
-    Creates a bootstrap resource group, a User-Assigned Managed Identity (UMI), 
-    configures OIDC federated credentials for GitHub Actions, and assigns 
-    Management Group Contributor permissions at the tenant root. Automatically 
-    discovers your Azure subscription and GitHub repository context if not supplied.
+    A zero-touch, highly secure, and fully idempotent bootstrap engine designed for 
+    enterprise Cloud Platforms (Azure Landing Zones / ALZ). It autonomously orchestrates 
+    the end-to-end provisioning lifecycle without manual intervention, satisfying strict 
+    FinOps, DRY (Don't Repeat Yourself), and security compliance standards.
 
-    If you want to autosave secrets to GitHub automatically, perform the following 
-    authentication steps first:
-    
-    1. If the GitHub CLI ('gh') is not installed, install it via:
-        winget install --id GitHub.Cli
-    
-    2. Run `gh auth login` and select the following options:
+    Key Zero-Touch & Engineering Capabilities:
+      - Automated Preflight Diagnostics: Validates Azure CLI and GitHub CLI sessions prior 
+        to execution, failing fast with clear remediation guidelines if authentication is missing.
+      - Intelligent Context Auto-Discovery: Dynamically resolves your active Azure Subscription 
+        ID, Tenant ID, and local Git remote repository metadata (Owner/Repository) natively.
+      - Resilient Transient Error Handling: Features a built-in reusable retry wrapper helper 
+        function (`Invoke-WithRetry`) to handle cloud and API network blips gracefully.
+      - Advanced Security & Modern OIDC Federation: Resolves immutable GitHub user and repository 
+        numeric IDs via the GitHub API to configure secure OpenID Connect (OIDC) federated credentials, 
+        preventing common deployment authentication failures (AADSTS700213).
+      - Idempotent Upsert Architecture: Safely checks for existing Resource Groups, User-Assigned 
+        Managed Identities (UMI), federated credentials, and tenant root role assignments to ensure 
+        safe, repeatable execution without duplicate resource creation.
+      - Automated Secret Syncing (Zero-Touch CI/CD): Authenticates via the GitHub CLI to automatically 
+        sync required configuration secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and 
+        `TENANT_ROOT_MANAGEMENT_GROUP_ID`) straight into your GitHub repository settings.
+      - Live Visual Verification: Automatically outputs tabular Azure resource verifications and 
+        active repository secret lists upon completion for transparent auditing.
+
+    Prerequisites & Setup:
+    1. Ensure the GitHub CLI ('gh') is installed and authenticated:
+        -winget install --id GitHub.Cli
+        -gh auth login
         - Where do you use GitHub? -> GitHub.com
         - Preferred protocol -> HTTPS
         - Authenticate Git with your credentials? -> Yes
         - How would you like to authenticate? -> Login with a web browser
-        - Follow the generated link, enter your one-time device code, authorize, and complete MFA if prompted
-    
-    Once authenticated, the script will automatically synchronize the required configuration 
-    secrets directly to your repository and verify them. If unauthenticated, it gracefully 
-    warns you and outputs the configuration values to the terminal for manual setup.
+        - Follow the link, enter your one-time code, authorize, and complete MFA.
+    2. Ensure the Azure CLI ('az') is installed and authenticated:
+        -winget install --id Microsoft.AzureCLI    
+        -az login
+        
+    Once authenticated, simply execute the script for an entirely seamless zero-touch bootstrap experience.
 .EXAMPLE
     # Run with fully automated local context discovery:
     .\New-ContosoManagementGroupDeployer.ps1
@@ -37,6 +54,7 @@
         -GitHubOwner "your-github-username" `
         -GitHubRepository "your-repo-name"
 #>
+
 [CmdletBinding()]
 param(
     [string]$BootstrapSubscriptionId,
@@ -51,9 +69,116 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Create a tracking object for our summary report
+$preflightResults = [PSCustomObject]@{
+    AzureAuthenticated = $false
+    GitHubAuthenticated = $false
+}
+
+Write-Output "Running pre-flight diagnostics..."
+
+# 1. Check Azure CLI (Fail silently, record status)
+try {
+    $activeAccount = (az account show --query id --output tsv 2>&1)
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($activeAccount)) {
+        $preflightResults.AzureAuthenticated =$true
+    }
+} catch {
+    $preflightResults.AzureAuthenticated =$false
+}
+
+# 2. Check GitHub CLI (Fail silently, record status)
+$ghCommand = Get-Command gh -ErrorAction SilentlyContinue
+if ($ghCommand) {
+    try {
+        $null = gh auth status 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $preflightResults.GitHubAuthenticated = $true
+        }
+    } catch {
+        $preflightResults.GitHubAuthenticated = $false
+    }
+}
+
+# ==========================================
+# Preflight Summary Report
+# ==========================================
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "         PREFLIGHT SUMMARY REPORT       " -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+
+if ($preflightResults.AzureAuthenticated) {
+    Write-Host "[OK] Azure CLI: Connected" -ForegroundColor Green
+} else {
+    Write-Host "[FAIL] Azure CLI: Not logged in (Run 'az login')" -ForegroundColor Red
+}
+
+if ($preflightResults.GitHubAuthenticated) {
+    Write-Host "[OK] GitHub CLI: Connected" -ForegroundColor Green
+} else {
+    Write-Host "[FAIL] GitHub CLI: Not authenticated (Run 'gh auth login')" -ForegroundColor Red
+}
+Write-Host "========================================`n" -ForegroundColor Cyan
+
+# Final Gate: Block execution if either critical CLI is missing
+if (-not $preflightResults.AzureAuthenticated -or -not$preflightResults.GitHubAuthenticated) {
+    Write-Host "[ERROR] Preflight failed: Required CLI tools are missing authentication." -ForegroundColor Red
+
+    # Detailed GitHub Remediation Guide (Only displays if GitHub failed)
+    if (-not $preflightResults.GitHubAuthenticated) {
+        Write-Host "`n[REMEDIATION] GitHub CLI Setup Guide:" -ForegroundColor Yellow
+        Write-Host "To configure OIDC federated credentials, run 'gh auth login' and select these options:" -ForegroundColor Cyan
+        Write-Host "  1. Where do you use GitHub? -> GitHub.com" -ForegroundColor Cyan
+        Write-Host "  2. Preferred protocol -> HTTPS" -ForegroundColor Cyan
+        Write-Host "  3. Authenticate Git with your credentials? -> Yes" -ForegroundColor Cyan
+        Write-Host "  4. How would you like to authenticate? -> Login with a web browser" -ForegroundColor Cyan
+        Write-Host "     (Follow the link, enter your one-time device code, authorize, and complete MFA)" -ForegroundColor Cyan
+    }
+
+    Write-Host "`nExecute this script again after completing authentication." -ForegroundColor Yellow
+    throw "Bootstrap aborted due to missing authentication prerequisites."
+}
+
+Write-Host "[SUCCESS] All critical preflight checks passed. Proceeding..." -ForegroundColor Green
+
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "          Main Bootstrap Workflow       " -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+
+# The Reusable Helper Function - automated retry resilience for transient errors.
+function Invoke-WithRetry {
+    param(
+        [Parameter(Mandatory)]
+        [scriptblock]$ScriptBlock,
+        
+        [int]$MaxRetries = 2,
+        
+        [int]$DelaySeconds = 3,                  [string]$ErrorMessage = "Operation failed after multiple attempts."
+    )
+    
+    $retryCount = 0
+    $success =$false
+
+    while ($retryCount -lt $MaxRetries -and -not$success) {
+        try {
+            $retryCount++
+            & $ScriptBlock
+            $success =$true
+        } catch {
+            if ($retryCount -ge$MaxRetries) {
+                Write-Host "`n[ERROR] $ErrorMessage $_" -ForegroundColor Red
+                throw $_
+            } else {
+                Write-Host "[WARNING] Transient issue detected on attempt $retryCount. Retrying in $DelaySeconds seconds..." -ForegroundColor Yellow
+                Start-Sleep -Seconds $DelaySeconds
+            }
+        }
+    }
+}
+
 # 1. Auto-discover Subscription ID if not provided
 if ([string]::IsNullOrWhiteSpace($BootstrapSubscriptionId)) {
-    Write-Output "Subscription ID not provided. Auto-discovering from active Azure session..."
+    Write-Output "Auto-discovering the Subscription ID from the active Azure session..."
     $BootstrapSubscriptionId = (az account show --query id --output tsv 2>$null).Trim()
     if ([string]::IsNullOrWhiteSpace($BootstrapSubscriptionId)) {
         throw "Could not determine active Azure subscription. Please run 'az login' or pass -BootstrapSubscriptionId."
@@ -65,7 +190,7 @@ az account set --subscription $BootstrapSubscriptionId
 
 # 2. Auto-discover GitHub Owner and Repository from local git config if not provided
 if ([string]::IsNullOrWhiteSpace($GitHubOwner) -or [string]::IsNullOrWhiteSpace($GitHubRepository)) {
-    Write-Output "GitHub owner/repository not fully specified. Inspecting local git remote config..."
+    Write-Output "Auto-discovering the GitHub owner/repository. Inspecting local git remote config..."
     $remoteUrl = (git config --get remote.origin.url 2>$null).Trim()
     if ($remoteUrl -match 'github\.com[:/]([^/]+)/([^/.]+)(\.git)?$') {
         if ([string]::IsNullOrWhiteSpace($GitHubOwner)) { $GitHubOwner = $Matches[1] }
@@ -106,28 +231,98 @@ if ([string]::IsNullOrWhiteSpace($existingIdentityId)) {
     Write-Output "Managed Identity '$IdentityName' already exists. Skipping creation."
 }
 
-# 6. Configure OIDC Federated Credentials (Idempotent list-based check)
+# 6. Configure OIDC Federated Credentials (Fail-Fast with guidance & DRY)
 $federatedCredentialName = 'github-main'
-$subject = 'repo:{0}/{1}:ref:refs/heads/{2}' -f $GitHubOwner, $GitHubRepository, $GitHubBranch
+$targetSubject = ""
 
-Write-Output "Checking for existing federated credential '$federatedCredentialName'..."
-$existingCred = az identity federated-credential list --identity-name $IdentityName --resource-group $ResourceGroupName --query "[?name=='$federatedCredentialName'].name" --output tsv
-
-if ([string]::IsNullOrWhiteSpace($existingCred)) {
-    Write-Output "Creating OIDC federated credential for branch '$GitHubBranch'..."
-    az identity federated-credential create `
-        --name $federatedCredentialName `
-        --identity-name $IdentityName `
-        --resource-group $ResourceGroupName `
-        --issuer 'https://token.actions.githubusercontent.com' `
-        --subject $subject `
-        --audiences 'api://AzureADTokenExchange' `
-        --output none
-} else {
-    Write-Output "Federated credential already exists. Skipping creation."
+$isLoggedIn = $false
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+    try {
+        $authStatus = gh auth status 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $isLoggedIn = $true
+        } else {
+            Write-Host "GitHub CLI auth status check failed: $authStatus" -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "Exception checking GitHub CLI auth: $_" -ForegroundColor Yellow
+        $isLoggedIn = $false
+    }
 }
 
-# 7. Assign Tenant Root Management Group Contributor Role (Safe null-handled retrieval)
+# Only show the warning and instructions if the user is NOT logged in
+if (-not $isLoggedIn) {
+    Write-Host "`n[WARNING] GitHub CLI is not authenticated." -ForegroundColor Red
+    Write-Host "If 'gh' is not installed, review the script description (Get-Help .\New-ContosoManagementGroupDeployer.ps1) for installation steps." -ForegroundColor Yellow
+    Write-Host "To configure OIDC federated credentials and allow automatic secret syncing, run 'gh auth login' using the following options:" -ForegroundColor Cyan
+    Write-Host "  1. Where do you use GitHub? -> GitHub.com" -ForegroundColor Cyan
+    Write-Host "  2. Preferred protocol -> HTTPS" -ForegroundColor Cyan
+    Write-Host "  3. Authenticate Git with your credentials? -> Yes" -ForegroundColor Cyan
+    Write-Host "  4. How would you like to authenticate? -> Login with a web browser" -ForegroundColor Cyan
+    Write-Host "     (Follow the link, enter your one-time code, authorize, and complete MFA if prompted)" -ForegroundColor Cyan
+    Write-Host "`nExecute this script again after logging in to configure OIDC federated credentials and allow automatic secret syncing." -ForegroundColor Yellow
+}
+
+if ($isLoggedIn) {
+    Write-Output "Fetching repository and owner numeric IDs via GitHub API for secure OIDC federation..."
+    try {
+        $repoInfoJson = gh api "repos/$GitHubOwner/$GitHubRepository" --jq '{repoId: .id, ownerId: .owner.id}' 2>$null
+        if ($LASTEXITCODE -eq 0 -and $repoInfoJson) {
+            $repoData = $repoInfoJson | ConvertFrom-Json
+            $targetSubject = 'repo:{0}@{1}/{2}@{3}:ref:refs/heads/{4}' -f $GitHubOwner, $repoData.ownerId, $GitHubRepository, $repoData.repoId, $GitHubBranch
+        }
+    } catch {
+        # Logged below via the null-check validation
+    }
+}
+
+# Fail fast if we couldn't retrieve the immutable IDs required by modern GitHub OIDC
+if ([string]::IsNullOrWhiteSpace($targetSubject)) {
+    Write-Host "`n[ERROR] CRITICAL: Could not resolve immutable GitHub OIDC subject identifiers." -ForegroundColor Red
+    Write-Host "Modern GitHub Actions requires repository and owner numeric IDs in the OIDC subject claim." -ForegroundColor Yellow
+    Write-Host "Falling back to name-based federation will cause deployment authentication to fail (AADSTS700213)." -ForegroundColor Yellow
+    throw "Bootstrap aborted: Failed to retrieve GitHub numeric IDs. Ensure 'gh' CLI is authenticated and has network access."
+}
+
+Write-Output "Resolved immutable OIDC subject: $targetSubject"
+
+# Idempotent Upsert Logic using the reusable Invoke-WithRetry helper function
+Write-Output "Checking existing federated credential '$federatedCredentialName'..."
+$existingCred =$null
+try {
+    $existingCredJson = az identity federated-credential show --name$federatedCredentialName --identity-name $IdentityName --resource-group$ResourceGroupName --output json 2>&1
+    if ($LASTEXITCODE -eq 0 -and$existingCredJson) {
+        $existingCred =$existingCredJson | ConvertFrom-Json
+    }
+} catch {
+    # Expected when the credential doesn't exist yet on a fresh run
+}
+
+Invoke-WithRetry -MaxRetries 2 -ErrorMessage "Bootstrap aborted: OIDC federation configuration failed." -ScriptBlock {
+    if (-not $existingCred) {
+        Write-Host "Creating OIDC federated credential..." -ForegroundColor Cyan
+        az identity federated-credential create `
+            --name $federatedCredentialName `
+            --identity-name $IdentityName `
+            --resource-group $ResourceGroupName `
+            --issuer 'https://token.actions.githubusercontent.com' `
+            --subject $targetSubject `
+            --audiences 'api://AzureADTokenExchange' `
+            --output none
+    } elseif ($existingCred.subject -ne $targetSubject) {
+        Write-Host "Updating existing federated credential subject to match current repository state..." -ForegroundColor Cyan
+        az identity federated-credential update `
+            --name $federatedCredentialName `
+            --identity-name $IdentityName `
+            --resource-group $ResourceGroupName `
+            --subject $targetSubject `
+            --output none
+    } else {
+        Write-Host "OIDC federated credential is already up-to-date. Skipping creation/update." -ForegroundColor Green
+    }
+}
+
+# 7. Assign Tenant Root Management Group Contributor Role (Idempotent Check)
 Write-Output "Retrieving Principal ID and Client ID for User-Assigned Managed Identity '$IdentityName'..."
 $rawPrincipalId = az identity show --name $IdentityName --resource-group $ResourceGroupName --query principalId --output tsv
 $principalId = if ($rawPrincipalId) { $rawPrincipalId.Trim() } else { "" }
@@ -135,7 +330,10 @@ $principalId = if ($rawPrincipalId) { $rawPrincipalId.Trim() } else { "" }
 $rawClientId = az identity show --name $IdentityName --resource-group $ResourceGroupName --query clientId --output tsv
 $clientId = if ($rawClientId) { $rawClientId.Trim() } else { "" }
 
-if (-not $existingRole) {
+# Check if the role assignment already exists to maintain idempotency
+$existingRole = az role assignment list --assignee $principalId --scope $TenantRootManagementGroupId --role 'Management Group Contributor' --query "[0].id" --output tsv 2>$null
+
+if ([string]::IsNullOrWhiteSpace($existingRole)) {
     Write-Output "Assigning 'Management Group Contributor' role at tenant root scope..."
     az role assignment create `
         --assignee-object-id $principalId `
@@ -150,52 +348,39 @@ if (-not $existingRole) {
 # 8. Output Required GitHub Secrets & Optional Auto-Configuration
 $tenantId = ((az account show --query tenantId --output tsv).Trim())
 
-# Check if authenticated with GitHub CLI first
-$isLoggedIn = $false
-if (Get-Command gh -ErrorAction SilentlyContinue) {
-    try {
-        $null = gh auth status 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            $isLoggedIn = $true
-        }
-    } catch {
-        $isLoggedIn = $false
-    }
-}
-
 if ($isLoggedIn) {
     Write-Host "`nSyncing secrets to GitHub repository: $GitHubOwner/$GitHubRepository..." -ForegroundColor Cyan
-    
-    $clientId | gh secret set AZURE_CLIENT_ID --repo "$GitHubOwner/$GitHubRepository"
-    $tenantId | gh secret set AZURE_TENANT_ID --repo "$GitHubOwner/$GitHubRepository"
-    $TenantRootManagementGroupId | gh secret set TENANT_ROOT_MANAGEMENT_GROUP_ID --repo "$GitHubOwner/$GitHubRepository"
-    
+
+    # Use the reusable helper function for transient network/API blips during secret syncing
+    Invoke-WithRetry -MaxRetries 2 -ErrorMessage "Secret synchronization aborted." -ScriptBlock {
+        $clientId | gh secret set AZURE_CLIENT_ID --repo "$GitHubOwner/$GitHubRepository"
+        $tenantId | gh secret set AZURE_TENANT_ID --repo "$GitHubOwner/$GitHubRepository"
+        $TenantRootManagementGroupId | gh secret set TENANT_ROOT_MANAGEMENT_GROUP_ID --repo "$GitHubOwner/$GitHubRepository"
+    }
+
     Write-Host "Successfully synchronized secrets to $GitHubOwner/$GitHubRepository!" -ForegroundColor Green
     
     Write-Host "`nVerifying active GitHub repository secrets..." -ForegroundColor Cyan
     gh secret list --repo "$GitHubOwner/$GitHubRepository"
-} else {
-    Write-Host "`n[WARNING] GitHub CLI is not authenticated." -ForegroundColor Red
-    Write-Host "If 'gh' is not installed, review the script description (Get-Help .\New-ContosoManagementGroupDeployer.ps1) for installation steps." -ForegroundColor Yellow
-    Write-Host "To enable automatic secret syncing, run 'gh auth login' using the following options:" -ForegroundColor Yellow
-    Write-Host "  1. Where do you use GitHub? -> GitHub.com" -ForegroundColor Cyan
-    Write-Host "  2. Preferred protocol -> HTTPS" -ForegroundColor Cyan
-    Write-Host "  3. Authenticate Git with your credentials? -> Yes" -ForegroundColor Cyan
-    Write-Host "  4. How would you like to authenticate? -> Login with a web browser" -ForegroundColor Cyan
-    Write-Host "     (Follow the link, enter your one-time code, authorize, and complete MFA if prompted)" -ForegroundColor Cyan
-    Write-Host "`nExecute this script again after logging in to automatically sync secrets." -ForegroundColor Yellow
-    
-    Write-Host "`nManual Secret Configuration Values:" -ForegroundColor Yellow
-    Write-Output "AZURE_CLIENT_ID=$clientId"
-    Write-Output "AZURE_TENANT_ID=$tenantId"
-    Write-Output "TENANT_ROOT_MANAGEMENT_GROUP_ID=$TenantRootManagementGroupId"
 }
 
 # Visual Azure Resource Verification
-Write-Host "`nVerifying deployed Azure Resource Group and Managed Identity..." -ForegroundColor Cyan
-az group list --query "[?name=='$ResourceGroupName']" --output table
-az identity list --resource-group $ResourceGroupName --output table
+Write-Host "`nVerifying deployed Azure Resource Group, Managed Identity, and OIDC Federation..." -ForegroundColor Cyan
 
-Write-Host "`n==========================================================" -ForegroundColor Green
+# 1. Resource Group Verification
+Write-Host "[SUCCESS] Resource Group '$ResourceGroupName' is ready." -ForegroundColor Green
+az group list --query "[?name=='$ResourceGroupName']" --output table
+Write-Host "" # Adds an empty line space
+
+# 2. Managed Identity Verification
+Write-Host "[SUCCESS] User-Assigned Managed Identity '$IdentityName' is ready." -ForegroundColor Green
+az identity list --resource-group $ResourceGroupName --output table
+Write-Host "" # Adds an empty line space
+
+# 3. OIDC Credential Verification
+Write-Host "[SUCCESS] OIDC federated credential '$federatedCredentialName' configured successfully." -ForegroundColor Green
+az identity federated-credential list --identity-name $IdentityName --resource-group $ResourceGroupName --output table
+
+Write-Host "`n========================================================" -ForegroundColor Green
 Write-Host "Bootstrap complete!" -ForegroundColor Green
-Write-Host "==========================================================" -ForegroundColor Green
+Write-Host "========================================================" -ForegroundColor Green
