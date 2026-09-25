@@ -17,14 +17,17 @@
       - Advanced Security & Modern OIDC Federation: Resolves immutable GitHub user and repository 
         numeric IDs via the GitHub API to configure secure OpenID Connect (OIDC) federated credentials, 
         preventing common deployment authentication failures (AADSTS700213).
+      - Idempotent Tenant Root RBAC Provisioning: Automatically assigns both 'Contributor' and 
+        'Resource Policy Contributor' roles at the Tenant Root Scope ("/") to ensure seamless 
+        orchestration of management group hierarchies and governance policy compliance initiatives.
       - Idempotent Upsert Architecture: Safely checks for existing Resource Groups, User-Assigned 
         Managed Identities (UMI), federated credentials, and tenant root role assignments to ensure 
         safe, repeatable execution without duplicate resource creation.
       - Automated Secret Syncing (Zero-Touch CI/CD): Authenticates via the GitHub CLI to automatically 
         sync required configuration secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and 
         `TENANT_ROOT_MANAGEMENT_GROUP_ID`) straight into your GitHub repository settings.
-      - Live Visual Verification: Automatically outputs tabular Azure resource verifications and 
-        active repository secret lists upon completion for transparent auditing.
+      - Live Visual Verification: Automatically outputs tabular Azure resource verifications, OIDC 
+        credentials, role assignments, and active repository secret lists upon completion for transparent auditing.
 
     Prerequisites & Setup:
     1. Ensure the GitHub CLI ('gh') is installed and authenticated:
@@ -322,17 +325,21 @@ Invoke-WithRetry -MaxRetries 2 -ErrorMessage "Bootstrap aborted: OIDC federation
     }
 }
 
-# 7. Assign Required Roles (Idempotent Checks)
+# 7. Assign Required Roles at Tenant Root Scope (Idempotent Checks)
 Write-Output "Retrieving Principal ID and Client ID for User-Assigned Managed Identity '$IdentityName'..."
-$rawPrincipalId = az identity show --name$IdentityName --resource-group $ResourceGroupName --query principalId --output tsv$principalId = if ($rawPrincipalId) {$rawPrincipalId.Trim() } else { "" }
+$rawPrincipalId = az identity show --name $IdentityName --resource-group $ResourceGroupName --query principalId --output tsv
+$principalId = if ($rawPrincipalId) { $rawPrincipalId.Trim() } else { "" }
 
-$rawClientId = az identity show --name$IdentityName --resource-group $ResourceGroupName --query clientId --output tsv$clientId = if ($rawClientId) {$rawClientId.Trim() } else { "" }
+$rawClientId = az identity show --name $IdentityName --resource-group $ResourceGroupName --query clientId --output tsv
+$clientId = if ($rawClientId) { $rawClientId.Trim() } else { "" }
 
 # 7a. Assign 'Contributor' role at the Tenant Root Scope ("/")
 # Required to grant the deployment principal permissions for tenant-scoped 
-# Bicep orchestrations and what-if validation dry runs.$existingRootRole = az role assignment list --assignee$principalId --scope "/" --role 'Contributor' --query "[0].id" --output tsv 2>$null
+# Bicep orchestrations and what-if validation dry runs.
+$existingRootRole = az role assignment list --assignee $principalId --scope "/" --role 'Contributor' --query "[0].id" --output tsv 2>$null
+
 if ([string]::IsNullOrWhiteSpace($existingRootRole)) {
-    Write-Output "Assigning 'Contributor' role at the tenant root scope ('/')..."
+    Write-Output "Assigning 'Contributor' role at tenant root scope ('/')..."
     az role assignment create `
         --assignee-object-id $principalId `
         --assignee-principal-type ServicePrincipal `
@@ -343,17 +350,18 @@ if ([string]::IsNullOrWhiteSpace($existingRootRole)) {
     Write-Output "Contributor role assignment at tenant root already exists. Skipping assignment."
 }
 
-# 7b. Assign 'Resource Policy Contributor' role at the Organization Management Group Scope
-$orgMgScope = "/providers/Microsoft.Management/managementGroups/mg-contoso-us"
-$existingPolicyRole = az role assignment list --assignee $principalId --scope $orgMgScope --role 'Resource Policy Contributor' --query "[0].id" --output tsv 2>$null
+# 7b. Assign 'Resource Policy Contributor' role at the Tenant Root Scope ("/")
+# Required so the identity can create policy definitions and assignments 
+# across the management group hierarchy before the groups are formally provisioned.
+$existingPolicyRole = az role assignment list --assignee $principalId --scope "/" --role 'Resource Policy Contributor' --query "[0].id" --output tsv 2>$null
 
 if ([string]::IsNullOrWhiteSpace($existingPolicyRole)) {
-    Write-Output "Assigning 'Resource Policy Contributor' role at scope '$orgMgScope'..."
+    Write-Output "Assigning 'Resource Policy Contributor' role at tenant root scope ('/')..."
     az role assignment create `
         --assignee-object-id $principalId `
         --assignee-principal-type ServicePrincipal `
         --role 'Resource Policy Contributor' `
-        --scope $orgMgScope `
+        --scope "/" `
         --output none
 } else {
     Write-Output "Resource Policy Contributor role assignment already exists. Skipping assignment."
@@ -394,6 +402,11 @@ Write-Host "" # Adds an empty line space
 # 3. OIDC Credential Verification
 Write-Host "[SUCCESS] OIDC federated credential '$federatedCredentialName' configured successfully." -ForegroundColor Green
 az identity federated-credential list --identity-name $IdentityName --resource-group $ResourceGroupName --output table
+Write-Host "" # Adds an empty line space
+
+# 4. Role Assignments Verification
+Write-Host "[SUCCESS] Tenant Root Role Assignments configured successfully." -ForegroundColor Green
+az role assignment list --assignee $principalId --all --output table
 
 Write-Host "`n========================================================" -ForegroundColor Green
 Write-Host "Bootstrap complete!" -ForegroundColor Green
