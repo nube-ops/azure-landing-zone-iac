@@ -65,7 +65,7 @@ Step 1: Run the Bootstrap Script (Identity, Preflight Diagnostics & OIDC Setup)
 Execute the zero-touch, highly secure, and idempotent bootstrap script locally from your repository root:
 ```powershell
 .\scripts\bootstrap\New-ContosoManagementGroupDeployer.ps1
-
+```
 What this enhanced script automates:
 -Automated Preflight Diagnostics: Validates active Azure CLI (az) and GitHub CLI (gh) sessions upfront, failing fast with precise remediation instructions if missing.
 -Intelligent Context Auto-Discovery: Dynamically detects your active Azure Subscription ID, Tenant ID, and local Git remote metadata (Owner/Repository) seamlessly.
