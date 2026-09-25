@@ -66,14 +66,14 @@ Execute the zero-touch, highly secure, and idempotent bootstrap script locally f
 ```powershell
 .\scripts\bootstrap\New-ContosoManagementGroupDeployer.ps1
 ```
-What this enhanced script automates:
--Automated Preflight Diagnostics: Validates active Azure CLI (az) and GitHub CLI (gh) sessions upfront, failing fast with precise remediation instructions if missing.
--Intelligent Context Auto-Discovery: Dynamically detects your active Azure Subscription ID, Tenant ID, and local Git remote metadata (Owner/Repository) seamlessly.
--Resilient Transient Error Handling: Built using a reusable retry wrapper helper function (Invoke-WithRetry) to gracefully ride out cloud and API network blips.
--Advanced Security & Modern OIDC Federation: Resolves immutable GitHub user and repository numeric IDs via the GitHub API to configure secure OpenID Connect (OIDC) federated credentials (api://AzureADTokenExchange), preventing common deployment authentication failures (AADSTS700213).
--Idempotent Upsert Architecture: Safely checks for existing Resource Groups, User-Assigned Managed Identities (UMI), federated credentials, and tenant root role assignments to prevent duplicate creations.
--Automated Secret Syncing (Zero-Touch CI/CD): Authenticates via the GitHub CLI to automatically push required configuration secrets (AZURE_CLIENT_ID, AZURE_TENANT_ID, and TENANT_ROOT_MANAGEMENT_GROUP_ID) straight into your GitHub repository settings.
--Live Visual Verification: Outputs formatted tabular Azure resource verifications and active repository secret lists upon completion for transparent auditing.
+**What this enhanced script automates:**
+* **Automated Preflight Diagnostics:** Validates active Azure CLI (`az`) and GitHub CLI (`gh`) sessions upfront, failing fast with precise remediation instructions if missing.
+* **Intelligent Context Auto-Discovery:** Dynamically detects your active Azure Subscription ID, Tenant ID, and local Git remote metadata (Owner/Repository) seamlessly.
+* **Resilient Transient Error Handling:** Built using a reusable retry wrapper helper function (`Invoke-WithRetry`) to gracefully ride out cloud and API network blips.
+* **Advanced Security & Modern OIDC Federation:** Resolves immutable GitHub user and repository numeric IDs via the GitHub API to configure secure OpenID Connect (OIDC) federated credentials (`api://AzureADTokenExchange`), preventing common deployment authentication failures (`AADSTS700213`).
+* **Idempotent Upsert Architecture:** Safely checks for existing Resource Groups, User-Assigned Managed Identities (UMI), federated credentials, and tenant root role assignments to prevent duplicate creations.
+* **Automated Secret Syncing (Zero-Touch CI/CD):** Authenticates via the GitHub CLI to automatically push required configuration secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `TENANT_ROOT_MANAGEMENT_GROUP_ID`) straight into your GitHub repository settings.
+* **Live Visual Verification:** Outputs formatted tabular Azure resource verifications and active repository secret lists upon completion for transparent auditing.
 
 Step 2: Configure Parameters for Bicep Deployment
 Navigate to the production environment directory and configure your subscription parameter file:
