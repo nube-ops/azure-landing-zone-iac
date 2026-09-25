@@ -26,10 +26,18 @@ jobs:
             az bicep lint --file environments/prod/main.bicep
 
   what-if:
-    name: Tenant What-If Dry Run
+    name: Tenant What-If Dry Run (${{ matrix.environment }})
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: ubuntu-latest
+    
+    # Scalability: Matrix strategy allows this single job to handle 
+    # multiple environments (prod, dev, staging) without duplicating YAML code.
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [prod] # Easily scale later by adding: [dev, staging, prod]
+
     permissions:
       id-token: write
       contents: read
@@ -40,6 +48,11 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Generate Parameter File from Template
+        run: |
+          # Dynamically copies the scrubbed public template into the active parameter filename for Bicep
+          cp environments/${{ matrix.environment }}/main.bicepparam.example environments/${{ matrix.environment }}/main.bicepparam
 
       - name: Authenticate to Azure via OIDC
         uses: azure/login@v2
@@ -54,5 +67,5 @@ jobs:
           inlineScript: |
             az deployment tenant what-if \
               --location centralus \
-              --template-file environments/prod/main.bicep \
-              --parameters environments/prod/main.bicepparam
+              --template-file environments/${{ matrix.environment }}/main.bicep \
+              --parameters environments/${{ matrix.environment }}/main.bicepparam
