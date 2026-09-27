@@ -61,12 +61,14 @@ Tools:
 * Bicep CLI (installed automatically with recent Azure CLI versions)  
 
 🚀 Deployment Instructions
-Step 1: Run the Bootstrap Script (Identity, Preflight Diagnostics & OIDC Setup)
-Execute the zero-touch, highly secure, and idempotent bootstrap script locally from your repository root:
+Step 1: Configure Primary Region & Run the Bootstrap Script
+1. Ensure your primary region is designated with `isPrimary: true` in your environment parameters file (`environments/prod/main.bicepparam`).
+2. Execute the zero-touch, highly secure, and idempotent bootstrap script locally from your repository root:
 ```powershell
 .\scripts\bootstrap\New-ContosoManagementGroupDeployer.ps1
 ```
 **What this enhanced script automates:**
+* **Dynamic Bicepparam Integration (DRY Architecture):** Programmatically reads your environment's parameter file (`environments/prod/main.bicepparam`), isolating the configuration block where `isPrimary: true` is declared to automatically derive target regions and resource naming conventions (such as location and region codes) without hardcoded duplication.
 * **Automated Preflight Diagnostics:** Validates active Azure CLI (`az`) and GitHub CLI (`gh`) sessions upfront, failing fast with precise remediation instructions if missing.
 * **Intelligent Context Auto-Discovery:** Dynamically detects your active Azure Subscription ID, Tenant ID, and local Git remote metadata (Owner/Repository) seamlessly.
 * **Resilient Transient Error Handling:** Built using a reusable retry wrapper helper function (`Invoke-WithRetry`) to gracefully ride out cloud and API network blips.

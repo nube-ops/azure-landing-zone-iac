@@ -1,6 +1,7 @@
 <#
 .SYNOPSIS
     Bootstraps the Azure environment for Contoso management group deployments.
+
 .DESCRIPTION
     A zero-touch, highly secure, and fully idempotent bootstrap engine designed for 
     enterprise Cloud Platforms (Azure Landing Zones / ALZ). It autonomously orchestrates 
@@ -8,6 +9,9 @@
     FinOps, DRY (Don't Repeat Yourself), and security compliance standards.
 
     Key Zero-Touch & Engineering Capabilities:
+      - Dynamic Bicepparam Integration (DRY Architecture): Programmatically parses the environment's 
+        'main.bicepparam' file[cite: 3], isolating the primary configuration block where `isPrimary: true`[cite: 3] 
+        is declared to automatically inherit target regions and resource naming conventions.
       - Automated Preflight Diagnostics: Validates Azure CLI and GitHub CLI sessions prior 
         to execution, failing fast with clear remediation guidelines if authentication is missing.
       - Intelligent Context Auto-Discovery: Dynamically resolves your active Azure Subscription 
@@ -30,7 +34,9 @@
         credentials, role assignments, and active repository secret lists upon completion for transparent auditing.
 
     Prerequisites & Setup:
-    1. Ensure the GitHub CLI ('gh') is installed and authenticated:
+    1. Ensure the primary region and metadata are configured in your parameter file:
+        - environments/prod/main.bicepparam (Designate your primary region with `isPrimary: true`)
+    2. Ensure the GitHub CLI ('gh') is installed and authenticated:
         -winget install --id GitHub.Cli
         -gh auth login
         - Where do you use GitHub? -> GitHub.com
@@ -38,11 +44,12 @@
         - Authenticate Git with your credentials? -> Yes
         - How would you like to authenticate? -> Login with a web browser
         - Follow the link, enter your one-time code, authorize, and complete MFA.
-    2. Ensure the Azure CLI ('az') is installed and authenticated:
+    3. Ensure the Azure CLI ('az') is installed and authenticated:
         -winget install --id Microsoft.AzureCLI    
         -az login
         
     Once authenticated, simply execute the script for an entirely seamless zero-touch bootstrap experience.
+
 .EXAMPLE
     # Run with fully automated local context discovery:
     .\New-ContosoManagementGroupDeployer.ps1
@@ -61,9 +68,10 @@
 [CmdletBinding()]
 param(
     [string]$BootstrapSubscriptionId,
-    [string]$ResourceGroupName = "rg-mgmt-identity-cus-01",
-    [string]$Location = "centralus",
-    [string]$IdentityName = "id-alz-deployer-cus-01",
+    [string]$BicepParamPath = "./main.bicepparam",
+    [string]$ResourceGroupName,
+    [string]$Location,
+    [string]$IdentityName,
     [string]$GitHubOwner,
     [string]$GitHubRepository,
     [string]$GitHubBranch = 'main',
@@ -143,6 +151,50 @@ if (-not $preflightResults.AzureAuthenticated -or -not$preflightResults.GitHubAu
 }
 
 Write-Host "[SUCCESS] All critical preflight checks passed. Proceeding..." -ForegroundColor Green
+
+# =========================================================================
+# Dynamic Primary Region & Configuration Auto-Resolution (DRY Pattern)
+# =========================================================================
+if ([string]::IsNullOrWhiteSpace($BicepParamPath)) {
+    # Dynamically resolve relative to script location: scripts/bootstrap -> environments/prod/main.bicepparam
+    $BicepParamPath = Join-Path $PSScriptRoot "../../environments/prod/main.bicepparam"
+}
+
+if (([string]::IsNullOrWhiteSpace($Location) -or [string]::IsNullOrWhiteSpace($ResourceGroupName) -or [string]::IsNullOrWhiteSpace($IdentityName)) -and (Test-Path $BicepParamPath)) {
+    Write-Output "Parsing primary region configuration from '$BicepParamPath'..."
+    try {
+        $bicepParamContent = Get-Content -Path $BicepParamPath -Raw -ErrorAction Stop
+
+        # Regex to locate the block where 'isPrimary: true' is defined and pull its properties
+        if ($bicepParamContent -match "location:\s*'([^']+)'[^}]*regionCode:\s*'([^']+)'[^}]*isPrimary:\s*true") {
+            $extractedLocation = $Matches[1]
+            $extractedRegionCode = $Matches[2]
+
+            Write-Output "Discovered Primary Region -> Location: $extractedLocation, Code: $extractedRegionCode"
+
+            # Dynamically set parameters if they weren't explicitly passed via CLI arguments
+            if ([string]::IsNullOrWhiteSpace($Location)) {
+                $Location = $extractedLocation
+            }
+            if ([string]::IsNullOrWhiteSpace($ResourceGroupName)) {
+                $ResourceGroupName = "rg-mgmt-identity-$extractedRegionCode-01"
+            }
+            if ([string]::IsNullOrWhiteSpace($IdentityName)) {
+                $IdentityName = "id-alz-deployer-$extractedRegionCode-01"
+            }
+        } else {
+            Write-Host "[WARNING] Could not match 'isPrimary: true' pattern in $BicepParamPath. Falling back to default naming." -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "[ERROR] Failed to read parameter file: $_" -ForegroundColor Red
+        throw $_
+    }
+}
+
+# Ultimate fallback safety defaults if parameters remain unassigned
+$Location = if ($Location) { $Location } else { "centralus" }
+$ResourceGroupName = if ($ResourceGroupName) { $ResourceGroupName } else { "rg-mgmt-identity-cus-01" }
+$IdentityName = if ($IdentityName) { $IdentityName } else { "id-alz-deployer-cus-01" }
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "          Main Bootstrap Workflow       " -ForegroundColor Cyan
