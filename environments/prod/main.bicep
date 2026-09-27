@@ -1,5 +1,9 @@
 targetScope = 'tenant'
 
+// ==========================================
+// Parameters (Pure Schema - Zero Hardcoded Data)
+// ==========================================
+
 param connectivitySubscriptionIds array = []
 param identitySubscriptionIds array = []
 param managementSubscriptionIds array = []
@@ -7,73 +11,23 @@ param corpSubscriptionIds array = []
 param onlineSubscriptionIds array = []
 
 @description('Enterprise regions configuration mapping locations to short codes and primary/failover roles')
-param regionalConfig array = [
-  {
-    location: 'centralus'
-    regionCode: 'cus'
-    isPrimary: true
-  }
-  {
-    location: 'eastus2'
-    regionCode: 'eus2'
-    isPrimary: false
-  }
-]
+param regionalConfig array
 
 @description('Mandatory tags to enforce across all child subscriptions')
-param requiredTags array = [
-  'Owner'
-  'Environment'
-  'CostCenter'
-]
+param requiredTags array
+
+@description('Name of the organizational root management group for policy scoping')
+param rootManagementGroupName string
+
+@description('Array of management groups defining the organizational hierarchy')
+param managementGroups array
+
+@description('Array mapping target management groups to their respective subscription IDs')
+param subscriptionAssociations array
 
 // ==========================================
 // 1. Data-Driven Management Groups Deployment
 // ==========================================
-
-@description('Array of management groups defining the organizational hierarchy')
-param managementGroups array = [
-  {
-    name: 'mg-contoso-us'
-    displayName: 'Contoso US Organization Root'
-    parentMgId: '/providers/Microsoft.Management/managementGroups/${tenant().tenantId}'
-  }
-  {
-    name: 'mg-contoso-us-landingzones'
-    displayName: 'Contoso US Landing Zones'
-    parentMgId: '/providers/Microsoft.Management/managementGroups/mg-contoso-us'
-  }
-  {
-    name: 'mg-contoso-us-corp'
-    displayName: 'Contoso US Corp'
-    parentMgId: '/providers/Microsoft.Management/managementGroups/mg-contoso-us-landingzones'
-  }
-  {
-    name: 'mg-contoso-us-online'
-    displayName: 'Contoso US Online'
-    parentMgId: '/providers/Microsoft.Management/managementGroups/mg-contoso-us-landingzones'
-  }
-  {
-    name: 'mg-contoso-us-platform'
-    displayName: 'Contoso US Platform'
-    parentMgId: '/providers/Microsoft.Management/managementGroups/mg-contoso-us'
-  }
-  {
-    name: 'mg-contoso-us-connectivity'
-    displayName: 'Contoso US Connectivity'
-    parentMgId: '/providers/Microsoft.Management/managementGroups/mg-contoso-us-platform'
-  }
-  {
-    name: 'mg-contoso-us-identity'
-    displayName: 'Contoso US Identity'
-    parentMgId: '/providers/Microsoft.Management/managementGroups/mg-contoso-us-platform'
-  }
-  {
-    name: 'mg-contoso-us-management'
-    displayName: 'Contoso US Management'
-    parentMgId: '/providers/Microsoft.Management/managementGroups/mg-contoso-us-platform'
-  }
-]
 
 module managementGroupsModule '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: {
   name: 'deploy-${mg.name}'
@@ -90,7 +44,7 @@ module managementGroupsModule '../../modules/management-groups/managementGroup.b
 
 module geoComplianceInitiative '../../modules/governance/geoComplianceInitiative.bicep' = {
   name: 'deploy-geo-compliance-initiative'
-  scope: managementGroup('mg-contoso-us')
+  scope: managementGroup(rootManagementGroupName)
   params: {
     allowedLocations: [for region in regionalConfig: region.location]
     effect: 'Deny'
@@ -100,7 +54,7 @@ module geoComplianceInitiative '../../modules/governance/geoComplianceInitiative
 
 module taggingInitiative '../../modules/governance/taggingInitiative.bicep' = {
   name: 'deploy-tagging-initiative'
-  scope: managementGroup('mg-contoso-us')
+  scope: managementGroup(rootManagementGroupName)
   params: {
     requiredTags: requiredTags
   }
@@ -109,37 +63,13 @@ module taggingInitiative '../../modules/governance/taggingInitiative.bicep' = {
 
 module securityBenchmarkAssignment '../../modules/governance/microsoftCloudSecurityBenchmark.bicep' = {
   name: 'deploy-security-benchmark-assignment'
-  scope: managementGroup('mg-contoso-us')
+  scope: managementGroup(rootManagementGroupName)
   dependsOn: [managementGroupsModule]
 }
 
 // ==========================================
 // 3. Data-Driven Subscription Associations
 // ==========================================
-
-@description('Array mapping target management groups to their respective subscription IDs')
-param subscriptionAssociations array = [
-  {
-    mgName: 'mg-contoso-us-corp'
-    subscriptionIds: corpSubscriptionIds
-  }
-  {
-    mgName: 'mg-contoso-us-online'
-    subscriptionIds: onlineSubscriptionIds
-  }
-  {
-    mgName: 'mg-contoso-us-connectivity'
-    subscriptionIds: connectivitySubscriptionIds
-  }
-  {
-    mgName: 'mg-contoso-us-identity'
-    subscriptionIds: identitySubscriptionIds
-  }
-  {
-    mgName: 'mg-contoso-us-management'
-    subscriptionIds: managementSubscriptionIds
-  }
-]
 
 module subscriptionAssociationsModule '../../modules/management-groups/subscriptionAssociation.bicep' = [for assoc in subscriptionAssociations: if (!empty(assoc.subscriptionIds)) {
   name: 'deploy-${assoc.mgName}-sub-assoc'
