@@ -36,7 +36,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [prod] # Easily scale later by adding: [dev, staging, prod]
+        include:
+          - environment: prod
+            location: centralus
 
     permissions:
       id-token: write
@@ -66,6 +68,6 @@ jobs:
         with:
           inlineScript: |
             az deployment tenant what-if \
-              --location centralus \
+              --location ${{ matrix.location }} \
               --template-file environments/${{ matrix.environment }}/main.bicep \
               --parameters environments/${{ matrix.environment }}/main.bicepparam
