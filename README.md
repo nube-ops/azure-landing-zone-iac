@@ -26,6 +26,7 @@ Tenant Root Group
  │              └── rg-online-edge-prod-cus-01 # Application Gateways, CDNs, & Front-End Routing
 ```
 📁 Repository Structure
+Configuration Management: Fully DRY parameterization allows enterprise deployment naming and hierarchy trees to be dynamically synthesized from a single orgName variable declaration inside main.bicepparam.
 ```text
 azure-landing-zone-iac/
 │

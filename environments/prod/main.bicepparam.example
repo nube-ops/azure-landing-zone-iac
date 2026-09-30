@@ -1,5 +1,106 @@
 using './main.bicep'
 
+/*
+  ==============================================================================
+  AZURE ENTERPRISE REGIONAL PAIRS & CODES REFERENCE
+  ==============================================================================
+  Primary Region      | Short Code | Paired Region       | Paired Code
+  --------------------+------------+---------------------+------------
+  centralus           | cus        | eastus2             | eus2
+  eastus              | eus        | westus2             | wus2
+  westus              | wus        | eastus              | eus
+  northcentralus      | ncus       | southcentralus      | scus
+  southcentralus      | scus       | northcentralus      | ncus
+  westus2             | wus2       | westus              | wus
+  eastus2             | eus2       | centralus           | cus
+  ==============================================================================
+*/
+
+// ==========================================
+// SINGLE SOURCE OF TRUTH (DRY Configuration)
+// ==========================================
+var orgName = 'contoso'
+var deploymentRegion = 'us'
+
+// Computed structural prefixes
+var rootMgName = 'mg-${orgName}-${deploymentRegion}'
+
+param regionalConfig = [
+  {
+    location: 'centralus'
+    regionCode: 'cus'
+    isPrimary: true
+  }
+  {
+    location: 'eastus2'
+    regionCode: 'eus2'
+    isPrimary: false
+  }
+]
+
+// ==========================================
+// Governance & Scoping Configurations
+// ==========================================
+
+param rootManagementGroupName = rootMgName
+
+param requiredTags = [
+  'Owner'
+  'Environment'
+  'CostCenter'
+]
+
+// ==========================================
+// Management Group Hierarchy (Topology Mapping)
+// ==========================================
+
+param managementGroups = [
+  {
+    name: rootMgName
+    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Organization Root'
+    parentMgId: 'TENANT_ROOT'
+  }
+  {
+    name: '${rootMgName}-landingzones'
+    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Landing Zones'
+    parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}'
+  }
+  {
+    name: '${rootMgName}-corp'
+    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Corp'
+    parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-landingzones'
+  }
+  {
+    name: '${rootMgName}-online'
+    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Online'
+    parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-landingzones'
+  }
+  {
+    name: '${rootMgName}-platform'
+    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Platform'
+    parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}'
+  }
+  {
+    name: '${rootMgName}-connectivity'
+    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Connectivity'
+    parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-platform'
+  }
+  {
+    name: '${rootMgName}-identity'
+    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Identity'
+    parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-platform'
+  }
+  {
+    name: '${rootMgName}-management'
+    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Management'
+    parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-platform'
+  }
+]
+
+// ==========================================
+// Subscription Mappings (Scrubbed Placeholders)
+// ==========================================
+
 param connectivitySubscriptionIds = [
   '11111111-1111-1111-1111-111111111111'
 ]
@@ -18,4 +119,27 @@ param corpSubscriptionIds = [
 
 param onlineSubscriptionIds = [
   '55555555-5555-5555-5555-555555555555'
+]
+
+param subscriptionAssociations = [
+  {
+    mgName: '${rootMgName}-corp'
+    subscriptionIds: corpSubscriptionIds
+  }
+  {
+    mgName: '${rootMgName}-online'
+    subscriptionIds: onlineSubscriptionIds
+  }
+  {
+    mgName: '${rootMgName}-connectivity'
+    subscriptionIds: connectivitySubscriptionIds
+  }
+  {
+    mgName: '${rootMgName}-identity'
+    subscriptionIds: identitySubscriptionIds
+  }
+  {
+    mgName: '${rootMgName}-management'
+    subscriptionIds: managementSubscriptionIds
+  }
 ]

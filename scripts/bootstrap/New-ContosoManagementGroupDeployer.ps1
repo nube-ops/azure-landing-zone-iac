@@ -68,7 +68,7 @@
 [CmdletBinding()]
 param(
     [string]$BootstrapSubscriptionId,
-    [string]$BicepParamPath = "./main.bicepparam",
+    [string]$BicepParamPath = (Join-Path $PSScriptRoot "../../environments/prod/main.bicepparam"),
     [string]$ResourceGroupName,
     [string]$Location,
     [string]$IdentityName,
@@ -191,10 +191,26 @@ if (([string]::IsNullOrWhiteSpace($Location) -or [string]::IsNullOrWhiteSpace($R
     }
 }
 
-# Ultimate fallback safety defaults if parameters remain unassigned
-$Location = if ($Location) { $Location } else { "centralus" }
-$ResourceGroupName = if ($ResourceGroupName) { $ResourceGroupName } else { "rg-mgmt-identity-cus-01" }
-$IdentityName = if ($IdentityName) { $IdentityName } else { "id-alz-deployer-cus-01" }
+# =========================================================================
+# Strict Validation: Ensure Configuration Was Successfully Resolved
+# =========================================================================
+if ([string]::IsNullOrWhiteSpace($Location) -or [string]::IsNullOrWhiteSpace($ResourceGroupName) -or [string]::IsNullOrWhiteSpace($IdentityName)) {
+    Write-Host "`n[ERROR] CRITICAL: Failed to resolve primary region configuration from '$BicepParamPath'." -ForegroundColor Red
+    Write-Host "Ensure your parameter file contains 'isPrimary: true' with a valid location and region code, or pass them explicitly via parameters." -ForegroundColor Yellow
+    throw "Bootstrap aborted: Unresolved primary configuration. Check your bicepparam schema or file path."
+}
+
+# ==========================================
+# Resolved Configuration Audit Output
+# ==========================================
+Write-Host "`n========================================" -ForegroundColor Cyan
+Write-Host "      RESOLVED BOOTSTRAP CONFIGURATION   " -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  - Source Parameter File : $BicepParamPath" -ForegroundColor DarkGray
+Write-Host "  - Target Location       : $Location" -ForegroundColor Green
+Write-Host "  - Resource Group        : $ResourceGroupName" -ForegroundColor Green
+Write-Host "  - Managed Identity      : $IdentityName" -ForegroundColor Green
+Write-Host "========================================`n" -ForegroundColor Cyan
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "          Main Bootstrap Workflow       " -ForegroundColor Cyan

@@ -71,6 +71,8 @@ module securityBenchmarkAssignment '../../modules/governance/microsoftCloudSecur
 // 3. Data-Driven Subscription Associations
 // ==========================================
 
+param subscriptionAssociations array
+
 module subscriptionAssociationsModule '../../modules/management-groups/subscriptionAssociation.bicep' = [for assoc in subscriptionAssociations: if (!empty(assoc.subscriptionIds)) {
   name: 'deploy-${assoc.mgName}-sub-assoc'
   params: {
