@@ -61,6 +61,12 @@ module securityBenchmarkAssignment '../../modules/governance/microsoftCloudSecur
   dependsOn: [managementGroupsModule]
 }
 
+module auditResourcesWithoutTags '../../modules/governance/auditResourcesWithoutTags.bicep' = {
+  name: 'deploy-audit-resources-without-tags'
+  scope: managementGroup(rootManagementGroupName)
+  dependsOn: [managementGroupsModule]
+}
+
 // ==========================================
 // 3. Data-Driven Subscription Associations
 // ==========================================
