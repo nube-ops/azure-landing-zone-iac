@@ -4,6 +4,8 @@ using './main.bicep'
   ==============================================================================
   AZURE ENTERPRISE REGIONAL PAIRS & CODES REFERENCE
   ==============================================================================
+  Use this reference guide when mapping out your multi-region deployment topology:
+  
   Primary Region      | Short Code | Paired Region       | Paired Code
   --------------------+------------+---------------------+------------
   centralus           | cus        | eastus2             | eus2
@@ -29,12 +31,12 @@ param regionalConfig = [
   {
     location: 'centralus'
     regionCode: 'cus'
-    isPrimary: true
+    isPrimary: true   // Explicitly designated as the primary region
   }
   {
     location: 'eastus2'
     regionCode: 'eus2'
-    isPrimary: false
+    isPrimary: false  // Failover / secondary region
   }
 ]
 
@@ -58,7 +60,7 @@ param managementGroups = [
   {
     name: rootMgName
     displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Organization Root'
-    parentMgId: 'TENANT_ROOT'
+    parentMgId: 'TENANT_ROOT' // Resolved dynamically in main.bicep
   }
   {
     name: '${rootMgName}-landingzones'
@@ -98,48 +100,37 @@ param managementGroups = [
 ]
 
 // ==========================================
-// Subscription Mappings (Scrubbed Placeholders)
+// Subscription Associations (Inline & DRY)
 // ==========================================
-
-param connectivitySubscriptionIds = [
-  '11111111-1111-1111-1111-111111111111'
-]
-
-param identitySubscriptionIds = [
-  '22222222-2222-2222-2222-222222222222'
-]
-
-param managementSubscriptionIds = [
-  '33333333-3333-3333-3333-333333333333'
-]
-
-param corpSubscriptionIds = [
-  '44444444-4444-4444-4444-444444444444'
-]
-
-param onlineSubscriptionIds = [
-  '55555555-5555-5555-5555-555555555555'
-]
-
 param subscriptionAssociations = [
   {
     mgName: '${rootMgName}-corp'
-    subscriptionIds: corpSubscriptionIds
+    subscriptionIds: [
+      '11111111-1111-1111-1111-111111111111' // Placeholder for Corp Subscription
+    ]
   }
   {
     mgName: '${rootMgName}-online'
-    subscriptionIds: onlineSubscriptionIds
+    subscriptionIds: [
+      '22222222-2222-2222-2222-222222222222' // Placeholder for Online Subscription
+    ]
   }
   {
     mgName: '${rootMgName}-connectivity'
-    subscriptionIds: connectivitySubscriptionIds
+    subscriptionIds: [
+      '33333333-3333-3333-3333-333333333333' // Placeholder for Connectivity Subscription
+    ]
   }
   {
     mgName: '${rootMgName}-identity'
-    subscriptionIds: identitySubscriptionIds
+    subscriptionIds: [
+      '44444444-4444-4444-4444-444444444444' // Placeholder for Identity Subscription
+    ]
   }
   {
     mgName: '${rootMgName}-management'
-    subscriptionIds: managementSubscriptionIds
+    subscriptionIds: [
+      '55555555-5555-5555-5555-555555555555' // Placeholder for Management Subscription
+    ]
   }
 ]

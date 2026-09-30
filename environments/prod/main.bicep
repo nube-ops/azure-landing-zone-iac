@@ -4,12 +4,6 @@ targetScope = 'tenant'
 // Parameters (Pure Schema - Zero Hardcoded Data)
 // ==========================================
 
-param connectivitySubscriptionIds array = []
-param identitySubscriptionIds array = []
-param managementSubscriptionIds array = []
-param corpSubscriptionIds array = []
-param onlineSubscriptionIds array = []
-
 @description('Enterprise regions configuration mapping locations to short codes and primary/failover roles')
 param regionalConfig array
 
@@ -70,8 +64,6 @@ module securityBenchmarkAssignment '../../modules/governance/microsoftCloudSecur
 // ==========================================
 // 3. Data-Driven Subscription Associations
 // ==========================================
-
-param subscriptionAssociations array
 
 module subscriptionAssociationsModule '../../modules/management-groups/subscriptionAssociation.bicep' = [for assoc in subscriptionAssociations: if (!empty(assoc.subscriptionIds)) {
   name: 'deploy-${assoc.mgName}-sub-assoc'
