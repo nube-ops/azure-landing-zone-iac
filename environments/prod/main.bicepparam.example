@@ -52,6 +52,27 @@ param requiredTags = [
   'CostCenter'
 ]
 
+param securityBenchmarkEnforcementMode = 'DoNotEnforce' // Easily toggle to 'Default' for strict production enforcement later
+
+param disallowedResourceTypes = [
+  'Microsoft.Network/publicIPAddresses'
+]
+
+// ==========================================
+// Policy Exemptions & Operational Overrides
+// ==========================================
+
+param policyExemptions = [
+  {
+    name: 'exemption-allow-hub-public-ips'
+    displayName: 'Allow Public IPs for Connectivity Hub Firewall'
+    description: 'Exempts the connectivity subscription from the global public IP restriction to permit Azure Firewall deployment.'
+    exemptionCategory: 'Mitigated'
+    scope: '/subscriptions/11111111-1111-1111-1111-111111111111' // Replace with target connectivity subscription ID
+    policyAssignmentId: '/providers/Microsoft.Management/managementGroups/mg-contoso-us/providers/Microsoft.Authorization/policyAssignments/storage-access-hardening'
+  }
+]
+
 // ==========================================
 // Management Group Hierarchy (Topology Mapping)
 // ==========================================
@@ -106,31 +127,31 @@ param subscriptionAssociations = [
   {
     mgName: '${rootMgName}-corp'
     subscriptionIds: [
-      '11111111-1111-1111-1111-111111111111' // Placeholder for Corp Subscription
+      '11111111-1111-1111-1111-111111111111' // Placeholder: Replace with actual Corp subscription ID
     ]
   }
   {
     mgName: '${rootMgName}-online'
     subscriptionIds: [
-      '22222222-2222-2222-2222-222222222222' // Placeholder for Online Subscription
+      '22222222-2222-2222-2222-222222222222' // Placeholder: Replace with actual Online subscription ID
     ]
   }
   {
     mgName: '${rootMgName}-connectivity'
     subscriptionIds: [
-      '33333333-3333-3333-3333-333333333333' // Placeholder for Connectivity Subscription
+      '33333333-3333-3333-3333-333333333333' // Placeholder: Replace with actual Connectivity subscription ID
     ]
   }
   {
     mgName: '${rootMgName}-identity'
     subscriptionIds: [
-      '44444444-4444-4444-4444-444444444444' // Placeholder for Identity Subscription
+      '44444444-4444-4444-4444-444444444444' // Placeholder: Replace with actual Identity subscription ID
     ]
   }
   {
     mgName: '${rootMgName}-management'
     subscriptionIds: [
-      '55555555-5555-5555-5555-555555555555' // Placeholder for Management Subscription
+      '55555555-5555-5555-5555-555555555555' // Placeholder: Replace with actual Management subscription ID
     ]
   }
 ]

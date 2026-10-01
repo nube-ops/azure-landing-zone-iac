@@ -97,7 +97,7 @@ module auditResourcesWithoutTags '../../modules/governance/audit-resources-witho
 }
 
 // ==========================================
-// Data-Driven Policy Exemptions Layer
+// 3. Data-Driven Policy Exemptions Layer
 // ==========================================
 
 module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' = [for exemption in policyExemptions: {
@@ -117,7 +117,7 @@ module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' 
 }]
 
 // ==========================================
-// 3. Data-Driven Subscription Associations
+// 4. Subscription Workload Associations
 // ==========================================
 
 module subscriptionAssociationsModule '../../modules/management-groups/subscriptionAssociation.bicep' = [for assoc in subscriptionAssociations: if (!empty(assoc.subscriptionIds)) {
