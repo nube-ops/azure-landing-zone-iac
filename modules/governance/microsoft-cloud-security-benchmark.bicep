@@ -8,7 +8,7 @@ param policyAssignmentName string = 'microsoft-cloud-security-benchmark'
   'Default'
   'DoNotEnforce'
 ])
-param enforcementMode string = 'Default'
+param enforcementMode string = 'DoNotEnforce'
 
 // Assign the built-in Microsoft Cloud Security Benchmark initiative at the management group scope
 resource securityBenchmarkAssignment 'Microsoft.Authorization/policyAssignments@2024-04-01' = {
