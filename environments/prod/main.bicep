@@ -10,6 +10,9 @@ param regionalConfig array
 @description('Mandatory tags to enforce across all child subscriptions')
 param requiredTags array
 
+@description('List of resource types explicitly disallowed by enterprise security baselines')
+param disallowedResourceTypes array
+
 @description('Name of the organizational root management group for policy scoping')
 param rootManagementGroupName string
 
@@ -36,7 +39,7 @@ module managementGroupsModule '../../modules/management-groups/managementGroup.b
 // 2. Governance & Compliance Layer 
 // ==========================================
 
-module geoComplianceInitiative '../../modules/governance/geoComplianceInitiative.bicep' = {
+module geoComplianceInitiative '../../modules/governance/geo-compliance-initiative.bicep' = {
   name: 'deploy-geo-compliance-initiative'
   scope: managementGroup(rootManagementGroupName)
   params: {
@@ -46,7 +49,7 @@ module geoComplianceInitiative '../../modules/governance/geoComplianceInitiative
   dependsOn: [managementGroupsModule]
 }
 
-module taggingInitiative '../../modules/governance/taggingInitiative.bicep' = {
+module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
   name: 'deploy-tagging-initiative'
   scope: managementGroup(rootManagementGroupName)
   params: {
@@ -55,13 +58,22 @@ module taggingInitiative '../../modules/governance/taggingInitiative.bicep' = {
   dependsOn: [managementGroupsModule]
 }
 
-module securityBenchmarkAssignment '../../modules/governance/microsoftCloudSecurityBenchmark.bicep' = {
+module securityBenchmarkAssignment '../../modules/governance/microsoft-cloud-security-benchmark.bicep' = {
   name: 'deploy-security-benchmark-assignment'
   scope: managementGroup(rootManagementGroupName)
   dependsOn: [managementGroupsModule]
 }
 
-module auditResourcesWithoutTags '../../modules/governance/auditResourcesWithoutTags.bicep' = {
+module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
+  name: 'deploy-storage-access-hardening-initiative'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    disallowedResourceTypes: disallowedResourceTypes
+  }
+  dependsOn: [managementGroupsModule]
+}
+
+module auditResourcesWithoutTags '../../modules/governance/audit-resources-without-tags.bicep' = {
   name: 'deploy-audit-resources-without-tags'
   scope: managementGroup(rootManagementGroupName)
   dependsOn: [managementGroupsModule]
@@ -79,6 +91,6 @@ module subscriptionAssociationsModule '../../modules/management-groups/subscript
   }
   dependsOn: [
     managementGroupsModule
-    geoComplianceInitiative
+    geo-complianceInitiative
   ]
 }]

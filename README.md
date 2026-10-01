@@ -37,7 +37,7 @@ azure-landing-zone-iac/
 │   └── prod/
 │       ├── main.bicep          # Tenant-level entry point orchestration
 │       ├── main.bicepparam     # Production parameter file
-│       └── main.bicepparam.example # Template parameter reference
+│       └── main.bicepparam.example   # Template parameter reference
 ├── modules/                    # Reusable, DRY Bicep modules
 │   ├── governance/             # Compliance, security benchmarks, policies, & tagging
 │   ├── key-vault/              # Key Vault deployment modules
@@ -45,7 +45,7 @@ azure-landing-zone-iac/
 │   └── management-groups/      # Reusable management group & subscription association modules
 ├── scripts/
 │   └── bootstrap/
-│       └── New-ContosoManagementGroupDeployer.ps1 # Idempotent OIDC & automated secret sync script
+│       └── Initialize-OidcBootstrap.ps1 # Idempotent OIDC & automated secret sync script
 ├── .gitignore
 └── README.md
 ```
@@ -66,7 +66,7 @@ Step 1: Configure Primary Region & Run the Bootstrap Script
 1. Ensure your primary region is designated with `isPrimary: true` in your environment parameters file (`environments/prod/main.bicepparam`).
 2. Execute the zero-touch, highly secure, and idempotent bootstrap script locally from your repository root:
 ```powershell
-.\scripts\bootstrap\New-ContosoManagementGroupDeployer.ps1
+.\scripts\bootstrap\Initialize-OidcBootstrap.ps1
 ```
 **What this enhanced script automates:**
 * **Dynamic Bicepparam Integration (DRY Architecture):** Programmatically reads your environment's parameter file (`environments/prod/main.bicepparam`), isolating the configuration block where `isPrimary: true` is declared to automatically derive target regions and resource naming conventions (such as location and region codes) without hardcoded duplication.
@@ -81,11 +81,7 @@ Step 1: Configure Primary Region & Run the Bootstrap Script
 Step 2: Configure Parameters for Bicep Deployment
 Navigate to the production environment directory and configure your subscription parameter file:
 
-Step 3: Execute the Infrastructure DeploymentBecause this template deploys resources at the tenant scope, deployments must be initiated targeting the tenant level rather than a specific subscription or resource group.  Bashaz deployment tenant create \
-  --name "deploy-caf-root-structure" \
-  --location "centralus" \
-  --template-file main.bicep \
-  --parameters main.bicepparam
+Step 3:
 
 🔒 Security & Best Practices
 * Zero Hardcoded Secrets: All environment-specific subscription IDs, client IDs, and names are injected dynamically via parameters or parameter files.
