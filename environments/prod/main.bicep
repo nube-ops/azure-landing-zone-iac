@@ -102,7 +102,7 @@ module auditResourcesWithoutTags '../../modules/governance/audit-resources-witho
 
 module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' = [for exemption in policyExemptions: {
   name: 'deploy-${exemption.name}'
-  scope: subscription(exemption.scope)
+  scope: subscription(exemption.subscriptionId)
   params: {
     exemptionName: exemption.name
     displayName: exemption.displayName
