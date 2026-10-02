@@ -80,10 +80,16 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# ==========================================
+# Preflight Checks
+# ==========================================
+
 # Create a tracking object for our summary report
 $preflightResults = [PSCustomObject]@{
-    AzureAuthenticated = $false
-    GitHubAuthenticated = $false
+    AzureAuthenticated   = $false
+    GitHubAuthenticated  = $false
+    GitHubUserMatched    = $false
+    MatchedUser          = ""
 }
 
 Write-Output "Running pre-flight diagnostics..."
@@ -111,9 +117,26 @@ if ($ghCommand) {
     }
 }
 
-# ==========================================
-# Preflight Summary Report
-# ==========================================
+# 3. Validate Active GitHub User Matches Repository Owner
+if ($preflightResults.GitHubAuthenticated) {
+    $remoteUrl = (git config --get remote.origin.url 2>$null)
+    if (-not [string]::IsNullOrWhiteSpace($remoteUrl) -and $remoteUrl -match 'github\.com[:/]([^/]+)/([^/.]+)(\.git)?$') {
+        $targetOwner = $Matches[1]
+        try {
+            $rawUserJson = gh api user --jq '.login' 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($rawUserJson)) {
+                $currentGhUser = $rawUserJson.Trim()
+                if ($currentGhUser -eq $targetOwner) {
+                    $preflightResults.GitHubUserMatched = $true
+                    $preflightResults.MatchedUser = $currentGhUser
+                }
+            }
+        } catch {
+            $preflightResults.GitHubUserMatched = $false
+        }
+    }
+}
+
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "         PREFLIGHT SUMMARY REPORT       " -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -129,13 +152,19 @@ if ($preflightResults.GitHubAuthenticated) {
 } else {
     Write-Host "[FAIL] GitHub CLI: Not authenticated (Run 'gh auth login')" -ForegroundColor Red
 }
+
+if ($preflightResults.GitHubUserMatched) {
+    Write-Host "[OK] GitHub User Context: Verified ($($preflightResults.MatchedUser))" -ForegroundColor Green
+} else {
+    Write-Host "[FAIL] GitHub User Context: Logged-in user does not match repository owner" -ForegroundColor Red
+}
 Write-Host "========================================`n" -ForegroundColor Cyan
 
-# Final Gate: Block execution if either critical CLI is missing
-if (-not $preflightResults.AzureAuthenticated -or -not$preflightResults.GitHubAuthenticated) {
-    Write-Host "[ERROR] Preflight failed: Required CLI tools are missing authentication." -ForegroundColor Red
+# Final Gate: Block execution if any preflight check fails
+if (-not $preflightResults.AzureAuthenticated -or -not $preflightResults.GitHubAuthenticated -or -not$preflightResults.GitHubUserMatched) {
+    Write-Host "[ERROR] Preflight failed: Required CLI authentication or repository ownership checks failed." -ForegroundColor Red
 
-    # Detailed GitHub Remediation Guide (Only displays if GitHub failed)
+    # 1. Detailed GitHub Remediation Guide (Displays if GitHub failed completely)
     if (-not $preflightResults.GitHubAuthenticated) {
         Write-Host "`n[REMEDIATION] GitHub CLI Setup Guide:" -ForegroundColor Yellow
         Write-Host "To configure OIDC federated credentials, run 'gh auth login' and select these options:" -ForegroundColor Cyan
@@ -144,6 +173,13 @@ if (-not $preflightResults.AzureAuthenticated -or -not$preflightResults.GitHubAu
         Write-Host "  3. Authenticate Git with your credentials? -> Yes" -ForegroundColor Cyan
         Write-Host "  4. How would you like to authenticate? -> Login with a web browser" -ForegroundColor Cyan
         Write-Host "     (Follow the link, enter your one-time device code, authorize, and complete MFA)" -ForegroundColor Cyan
+    }
+
+    # 2. Wrong Account Remediation (Displays if logged into GitHub, but wrong account)
+    if ($preflightResults.GitHubAuthenticated -and -not$preflightResults.GitHubUserMatched) {
+        Write-Host "`n[REMEDIATION] GitHub Account Mismatch:" -ForegroundColor Yellow
+        Write-Host "You are logged into the wrong GitHub account via 'gh'." -ForegroundColor Cyan
+        Write-Host "Run 'gh auth logout' and then re-authenticate with the account that owns this repository." -ForegroundColor Cyan
     }
 
     Write-Host "`nExecute this script again after completing authentication." -ForegroundColor Yellow
@@ -302,7 +338,10 @@ if ([string]::IsNullOrWhiteSpace($existingIdentityId)) {
     Write-Output "Managed Identity '$IdentityName' already exists. Skipping creation."
 }
 
+# ==========================================
 # 6. Configure OIDC Federated Credentials (Fail-Fast with guidance & DRY)
+# ==========================================
+
 $federatedCredentialName = 'github-main'
 $targetSubject = ""
 
@@ -393,7 +432,9 @@ Invoke-WithRetry -MaxRetries 2 -ErrorMessage "Bootstrap aborted: OIDC federation
     }
 }
 
+# ==========================================
 # 7. Assign Required Roles at Tenant Root Scope (Idempotent Checks)
+# ==========================================
 Write-Output "Retrieving Principal ID and Client ID for User-Assigned Managed Identity '$IdentityName'..."
 $rawPrincipalId = az identity show --name $IdentityName --resource-group $ResourceGroupName --query principalId --output tsv
 $principalId = if ($rawPrincipalId) { $rawPrincipalId.Trim() } else { "" }
@@ -454,7 +495,9 @@ if ($isLoggedIn) {
     gh secret list --repo "$GitHubOwner/$GitHubRepository"
 }
 
+# ==========================================
 # Visual Azure Resource Verification
+# ==========================================
 Write-Host "`nVerifying deployed Azure Resource Group, Managed Identity, and OIDC Federation..." -ForegroundColor Cyan
 
 # 1. Resource Group Verification
