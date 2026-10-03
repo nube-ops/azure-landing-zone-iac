@@ -66,7 +66,7 @@ Tools:
 To maintain strict adherence to DRY, Idempotency, and Cloud Governance best practices, follow these sequential phases to bootstrap your enterprise landing zone environment.
 
 ### Phase 1: Pre-Provisioning & Subscription Naming Conventions
-Prior to running the bootstrap scripts or deployment pipeline, ensure your target enterprise subscriptions are pre-provisioned within your Azure tenant and that the `main.bicepparam` subscription associations align with your Azure subscription names.
+* Prior to running the bootstrap scripts or deployment pipeline, ensure your target enterprise subscriptions are pre-provisioned within your Azure tenant and that the `main.bicepparam` subscription associations align with your Azure subscription names.
 * **Billing & Creation Constraints:** Standard Pay-As-You-Go or personal Azure accounts are typically capped at a maximum of 5 active subscriptions and often throttle rapid programmatic creation (limiting provisioning to one subscription per 24-hour window). For a complete landing zone rollout, ensure these subscriptions are created beforehand via your Azure Portal or enterprise agreement billing profile.
 ---
 | Workload Domain | Required Naming Keyword | Example Subscription Name |
@@ -79,17 +79,11 @@ Prior to running the bootstrap scripts or deployment pipeline, ensure your targe
 ---
 * **Single Source of Truth (DRY Naming):** Changing `orgName` and `deploymentRegion` at the top of `environments/prod/main.bicepparam` automatically cascades custom naming across all management groups and resource hierarchies. The subscriptionAssociations block at the bottom maps explicit workload domains (such as corp, online, and connectivity), which are then automatically parsed and synchronized with your actual Azure Subscription IDs by the initialization script that .
 
-### Phase 2: Automated Subscription Discovery & Parameter Synchronization (`Initialize-SubscriptionSecrets.ps1`)
-Once your subscriptions are active, authenticate your CLI tools and run the subscription management script from your repository root:
-
-**Authenticate Azure CLI:**
-   ```powershell
-   az login
-   ```
-**Authenticate Github CLI:**
-   ```powershell
-   gh auth login
-   ```
+### Phase 2: Automated Subscription Discovery & Parameter Synchronization
+* Once your subscriptions are active, authenticate your CLI tools and run the subscription management script from your repository root:
+```powershell
+.\scripts\bootstrap\Initialize-SubscriptionSecrets.ps1
+```
 What Initialize-SubscriptionSecrets.ps1 Accomplishes:
 * **Automated Preflight Diagnostics:** Validates active Azure CLI (az) and GitHub CLI (gh) sessions, verifying repository ownership context and failing fast with explicit remediation guides if missing.
 * **Intelligent Context Auto-Discovery:** Natively resolves local Git remote repository metadata (Owner and Repository) to target the correct GitHub environment without hardcoded configurations.
@@ -99,37 +93,23 @@ What Initialize-SubscriptionSecrets.ps1 Accomplishes:
 * **Structural Diff Auditing:** Employs `git diff --no-index` against a temporary backup to prove isolated parameter modifications and guarantee absolute zero unintended drift.
 * **Automated CI/CD Secret Syncing:** Authenticates via the GitHub CLI to securely upsert required workload subscription IDs straight into GitHub Actions repository settings, complete with live audit tables.
 
-### Phase 3: 
-
-### Configure Primary Region & Run the Bootstrap Script
-1. Ensure your primary region is designated with `isPrimary: true` in your environment parameters file (`environments/prod/main.bicepparam`)[cite: 9].
-2. Execute the zero-touch, highly secure, and idempotent bootstrap script locally from your repository root[cite: 9]:
-```powershell
-.\scripts\bootstrap\Initialize-OidcBootstrap.ps1
-
-
-
-Azure Subscription Prerequisites:
-Prior to running the bootstrap script or deployment pipeline, ensure your target enterprise subscriptions (Connectivity, Identity, Management, Corp, and Online) are provisioned within your Azure tenant. The bootstrap engine will automatically discover and sync these subscriptions as secure GitHub Actions secrets for pipeline orchestration.
-
-Configure Primary Region & Run the Bootstrap Script
-1. Ensure your primary region is designated with `isPrimary: true` in your environment parameters file (`environments/prod/main.bicepparam`).
-2. Execute the zero-touch, highly secure, and idempotent bootstrap script locally from your repository root:
+### Phase 3: Configure Primary & Multi-Region HA Architecture
+* Designate your primary deployment location with `isPrimary: true` in your environment parameters file (`environments/prod/main.bicepparam`), while aligning your secondary region with its Azure-paired region for high availability (HA), disaster recovery (DR) readiness, and automated cross-region policy compliance.
+* Execute the zero-touch, highly secure, and idempotent bootstrap script locally from your repository root:
 ```powershell
 .\scripts\bootstrap\Initialize-OidcBootstrap.ps1
 ```
-**What this enhanced script automates:**
+What Initialize-OidcBootstrap.ps1 Accomplishes:
 * **Dynamic Bicepparam Integration (DRY Architecture):** Programmatically reads your environment's parameter file (`environments/prod/main.bicepparam`), isolating the configuration block where `isPrimary: true` is declared to automatically derive target regions and resource naming conventions (such as location and region codes) without hardcoded duplication.
 * **Automated Preflight Diagnostics:** Validates active Azure CLI (`az`) and GitHub CLI (`gh`) sessions upfront, failing fast with precise remediation instructions if missing.
-* **Intelligent Context Auto-Discovery:** Dynamically detects your active Azure Subscription ID, Tenant ID, and local Git remote metadata (Owner/Repository) seamlessly.
+* **Intelligent Context Auto-Discovery:** Dynamically detects your active Azure Subscription ID, Tenant ID, and local Git remote metadata (Owner/Repository) with a graceful fallback safety net.
 * **Resilient Transient Error Handling:** Built using a reusable retry wrapper helper function (`Invoke-WithRetry`) to gracefully ride out cloud and API network blips.
 * **Advanced Security & Modern OIDC Federation:** Resolves immutable GitHub user and repository numeric IDs via the GitHub API to configure secure OpenID Connect (OIDC) federated credentials (`api://AzureADTokenExchange`), preventing common deployment authentication failures (`AADSTS700213`).
-* **Idempotent Tenant Root RBAC & Upsert Architecture:** Safely checks for and provisions required resources (Resource Groups, User-Assigned Managed Identities, OIDC credentials, and tenant-root least-privilege role assignments) to ensure that once executed, the deployment principal is fully authorized to orchestrate the downstream management group hierarchy and governance policies.
+* **Idempotent Tenant Root RBAC & Upsert Architecture:** Safely checks for and provisions required resources (Resource Groups, User-Assigned Managed Identities, OIDC credentials, and tenant-root least-privilege role assignments) to ensure secure, repeatable multi-run execution without duplicate resource creation.
 * **Automated Secret Syncing (Zero-Touch CI/CD):** Authenticates via the GitHub CLI to automatically push required configuration secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `TENANT_ROOT_MANAGEMENT_GROUP_ID`) straight into your GitHub repository settings.
 * **Live Visual Verification:** Outputs formatted tabular Azure resource verifications and active repository secret lists upon completion for transparent auditing.
 
-Configure Parameters for Bicep Deployment
-Navigate to the production environment directory and configure your subscription parameter file:
+### Phase 4:
 
 
 

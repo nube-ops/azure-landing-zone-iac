@@ -10,8 +10,9 @@
 
     Key Zero-Touch & Engineering Capabilities:
       - Dynamic Bicepparam Integration (DRY Architecture): Programmatically parses the environment's 
-        'main.bicepparam' file[cite: 3], isolating the primary configuration block where `isPrimary: true`[cite: 3] 
-        is declared to automatically inherit target regions and resource naming conventions.
+        'main.bicepparam' file, extracting top-level metadata (`orgName`, `deploymentRegion`), 
+        isolating the primary configuration block where `isPrimary: true` is declared, and 
+        dynamically resolving target subscription mappings to inherit naming and resource locations.
       - Automated Preflight Diagnostics: Validates Azure CLI and GitHub CLI sessions prior 
         to execution, failing fast with clear remediation guidelines if authentication is missing.
       - Intelligent Context Auto-Discovery: Dynamically resolves your active Azure Subscription 
@@ -197,16 +198,26 @@ if ([string]::IsNullOrWhiteSpace($BicepParamPath)) {
 }
 
 if (([string]::IsNullOrWhiteSpace($Location) -or [string]::IsNullOrWhiteSpace($ResourceGroupName) -or [string]::IsNullOrWhiteSpace($IdentityName)) -and (Test-Path $BicepParamPath)) {
-    Write-Output "Parsing primary region configuration from '$BicepParamPath'..."
     try {
         $bicepParamContent = Get-Content -Path $BicepParamPath -Raw -ErrorAction Stop
 
         # Regex to locate the block where 'isPrimary: true' is defined and pull its properties
-        if ($bicepParamContent -match "location:\s*'([^']+)'[^}]*regionCode:\s*'([^']+)'[^}]*isPrimary:\s*true") {
+        if ($bicepParamContent -match "(?s)location:\s*'([^']+)'[^}]*?regionCode:\s*'([^']+)'[^}]*?isPrimary:\s*true") {
             $extractedLocation = $Matches[1]
             $extractedRegionCode = $Matches[2]
 
-            Write-Output "Discovered Primary Region -> Location: $extractedLocation, Code: $extractedRegionCode"
+            # Parse DRY orgName and deploymentRegion from the top of main.bicepparam
+            if ($bicepParamContent -match "var\s+orgName\s*=\s*'([^']+)'") {
+                $script:ParsedOrgName = $Matches[1]
+            }
+            if ($bicepParamContent -match "var\s+deploymentRegion\s*=\s*'([^']+)'") {
+                $script:ParsedDeploymentRegion = $Matches[1]
+            }
+
+            # Parse Identity Subscription ID dynamically from main.bicepparam
+            if ($bicepParamContent -match "mgName:\s*'[^']*-identity'\s*subscriptionIds:\s*\[\s*'([^']+)'") {
+                $script:BootstrapSubscriptionId = $Matches[1]
+            }
 
             # Dynamically set parameters if they weren't explicitly passed via CLI arguments
             if ([string]::IsNullOrWhiteSpace($Location)) {
@@ -243,9 +254,12 @@ Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "      RESOLVED BOOTSTRAP CONFIGURATION   " -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  - Source Parameter File : $BicepParamPath" -ForegroundColor DarkGray
-Write-Host "  - Target Location       : $Location" -ForegroundColor Green
+Write-Host "  - Organization Name     : $ParsedOrgName" -ForegroundColor Green
+Write-Host "  - Deployment Region     : $ParsedDeploymentRegion" -ForegroundColor Green
+Write-Host "  - Primary Location      : $Location ($extractedRegionCode)" -ForegroundColor Green
 Write-Host "  - Resource Group        : $ResourceGroupName" -ForegroundColor Green
 Write-Host "  - Managed Identity      : $IdentityName" -ForegroundColor Green
+Write-Host "  - Bootstrap Sub ID      : $BootstrapSubscriptionId" -ForegroundColor Green
 Write-Host "========================================`n" -ForegroundColor Cyan
 
 Write-Host "`n========================================" -ForegroundColor Cyan
@@ -296,6 +310,7 @@ Write-Output "Setting active subscription to $BootstrapSubscriptionId..."
 az account set --subscription $BootstrapSubscriptionId
 
 # 2. Auto-discover GitHub Owner and Repository from local git config if not provided
+Write-Host ""
 if ([string]::IsNullOrWhiteSpace($GitHubOwner) -or [string]::IsNullOrWhiteSpace($GitHubRepository)) {
     Write-Output "Auto-discovering the GitHub owner/repository. Inspecting local git remote config..."
     $remoteUrl = (git config --get remote.origin.url 2>$null).Trim()
@@ -319,6 +334,7 @@ if ($TenantRootManagementGroupId -notmatch '^/providers/Microsoft\.Management/ma
 }
 
 # 4. Bootstrap Resource Group
+Write-Host ""
 Write-Output "Ensuring resource group '$ResourceGroupName' exists in location '$Location'..."
 az group create --name $ResourceGroupName --location $Location --output none
 
@@ -373,6 +389,7 @@ if (-not $isLoggedIn) {
     Write-Host "`nExecute this script again after logging in to configure OIDC federated credentials and allow automatic secret syncing." -ForegroundColor Yellow
 }
 
+Write-Host ""
 if ($isLoggedIn) {
     Write-Output "Fetching repository and owner numeric IDs via GitHub API for secure OIDC federation..."
     try {
@@ -435,6 +452,7 @@ Invoke-WithRetry -MaxRetries 2 -ErrorMessage "Bootstrap aborted: OIDC federation
 # ==========================================
 # 7. Assign Required Roles at Tenant Root Scope (Idempotent Checks)
 # ==========================================
+Write-Host ""
 Write-Output "Retrieving Principal ID and Client ID for User-Assigned Managed Identity '$IdentityName'..."
 $rawPrincipalId = az identity show --name $IdentityName --resource-group $ResourceGroupName --query principalId --output tsv
 $principalId = if ($rawPrincipalId) { $rawPrincipalId.Trim() } else { "" }
