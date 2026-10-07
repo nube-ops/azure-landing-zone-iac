@@ -56,6 +56,7 @@ module managementGroupsModule '../../modules/management-groups/managementGroup.b
 // 2. Governance & Compliance Layer 
 // ==========================================
 var computedAllowedLocations = [for region in regionalConfig: region.location]
+
 module governancePolicyAssignments '../../modules/governance/policy-assignment.bicep' = [for policy in governancePolicies: {
   name: 'deploy-${policy.name}'
   scope: managementGroup(rootManagementGroupName)
@@ -64,7 +65,7 @@ module governancePolicyAssignments '../../modules/governance/policy-assignment.b
     policyDefinitionId: policy.definitionId
     policyDisplayName: policy.displayName
     policyDescription: policy.description
-    // Automatically inject computed regions for geo-compliance, fallback to static params otherwise
+    // Dynamically injects computed runtime regions for geo-compliance while falling back cleanly
     policyParameters: policy.name == 'geo-compliance-assignment' ? {
       listOfAllowedLocations: {
         value: computedAllowedLocations
@@ -74,39 +75,6 @@ module governancePolicyAssignments '../../modules/governance/policy-assignment.b
   }
   dependsOn: [managementGroupsModule]
 }]
-
-module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
-  name: 'deploy-tagging-initiative'
-  scope: managementGroup(rootManagementGroupName)
-  params: {
-    requiredTags: requiredTags
-  }
-  dependsOn: [managementGroupsModule]
-}
-
-module securityBenchmarkAssignment '../../modules/governance/microsoft-cloud-security-benchmark.bicep' = {
-  name: 'deploy-security-benchmark-assignment'
-  scope: managementGroup(rootManagementGroupName)
-  params: {
-    enforcementMode: securityBenchmarkEnforcementMode
-  }
-  dependsOn: [managementGroupsModule]
-}
-
-module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
-  name: 'deploy-storage-access-hardening-initiative'
-  scope: managementGroup(rootManagementGroupName)
-  params: {
-    disallowedResourceTypes: disallowedResourceTypes
-  }
-  dependsOn: [managementGroupsModule]
-}
-
-module auditResourcesWithoutTags '../../modules/governance/audit-resources-without-tags.bicep' = {
-  name: 'deploy-audit-resources-without-tags'
-  scope: managementGroup(rootManagementGroupName)
-  dependsOn: [managementGroupsModule]
-}
 
 // ==========================================
 // 3. Data-Driven Policy Exemptions Layer
@@ -123,8 +91,7 @@ module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' 
     policyAssignmentId: exemption.policyAssignmentId
   }
   dependsOn: [
-    storageInitiative
-    securityBenchmarkAssignment
+    governancePolicyAssignments  // Correctly points to the unified data-driven policy loop
   ]
 }]
 
