@@ -79,7 +79,7 @@ param policyExemptions = [
     displayName: 'Allow Public IPs for Connectivity Hub Firewall'
     description: 'Exempts the connectivity subscription from the global public IP restriction to permit Azure Firewall deployment.'
     exemptionCategory: 'Mitigated'
-    subscriptionId: '00000000-0000-0000-0000-000000000000'
+    subscriptionId: '11111111-1111-1111-1111-111111111111'
     policyAssignmentId: '/providers/Microsoft.Management/managementGroups/mg-fabrikam-us/providers/Microsoft.Authorization/policyAssignments/storage-access-hardening'
   }
 ]
