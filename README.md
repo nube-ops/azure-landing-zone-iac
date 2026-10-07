@@ -109,7 +109,7 @@ What Initialize-OidcBootstrap.ps1 Accomplishes:
 * **Automated Secret Syncing (Zero-Touch CI/CD):** Authenticates via the GitHub CLI to automatically push required configuration secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `TENANT_ROOT_MANAGEMENT_GROUP_ID`) straight into your GitHub repository settings.
 * **Live Visual Verification:** Outputs formatted tabular Azure resource verifications and active repository secret lists upon completion for transparent auditing.
 
-### Phase 4: resource groups topology in bicep param. can it be dryer?
+### Phase 4: 
 
 
 

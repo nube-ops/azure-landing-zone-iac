@@ -1,20 +1,32 @@
 targetScope = 'managementGroup'
 
-@description('Custom policy definition resource ID.')
+@description('The fully qualified ID of the Azure Policy definition or initiative definition')
 param policyDefinitionId string
 
-@description('Unique name for the policy assignment.')
-param assignmentName string = 'audit-required-tag'
+@description('The display name of the policy assignment')
+param policyDisplayName string
 
-@description('Display name for the policy assignment.')
-param assignmentDisplayName string = 'Audit resources missing a required tag'
+@description('The description of the policy assignment')
+param policyDescription string
 
-resource policyAssignment 'Microsoft.Authorization/policyAssignments@2024-04-01' = {
-  name: assignmentName
+@description('Parameter values for the policy assignment rule evaluation')
+param policyParameters object = {}
+
+@description('Enforcement effect or mode for the policy assignment')
+param enforcementEffect string = 'Deny'
+
+resource policyAssignment 'Microsoft.Authorization/policyAssignments@2023-04-01' = {
+  name: uniqueString(policyDefinitionId, scopeTypeFlag ?? 'mg')
+  displayName: policyDisplayName
+  description: policyDescription
   properties: {
-    displayName: assignmentDisplayName
-    description: 'Audits resources that do not contain the required tag.'
     policyDefinitionId: policyDefinitionId
+    parameters: notEmpty(policyParameters) ? policyParameters : null
+    nonComplianceMessages: [
+      {
+        message: 'Resource violates organizational governance baseline: ${policyDisplayName}'
+      }
+    ]
   }
 }
 

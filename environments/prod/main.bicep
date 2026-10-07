@@ -22,6 +22,14 @@ param requiredTags array
 @description('List of resource types explicitly disallowed by enterprise security baselines')
 param disallowedResourceTypes array
 
+@description('Enforcement effect for the geo-compliance initiative')
+@allowed([
+  'Deny'
+  'Audit'
+  'Disabled'
+])
+param geoComplianceEffect string = 'Deny'
+
 @description('Enforcement mode for the Microsoft Cloud Security Benchmark')
 @allowed([
   'Default'
@@ -58,7 +66,7 @@ module geoComplianceInitiative '../../modules/governance/geo-compliance-initiati
   scope: managementGroup(rootManagementGroupName)
   params: {
     allowedLocations: [for region in regionalConfig: region.location]
-    effect: 'Deny'
+    effect: geoComplianceEffect
   }
   dependsOn: [managementGroupsModule]
 }
