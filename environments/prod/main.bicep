@@ -19,16 +19,11 @@ param managementGroups array
 @description('Mandatory tags to enforce across all child subscriptions')
 param requiredTags array
 
+@description('Array of governance policies driven by the universal policy assignment wrapper')
+param governancePolicies array
+
 @description('List of resource types explicitly disallowed by enterprise security baselines')
 param disallowedResourceTypes array
-
-@description('Enforcement effect for the geo-compliance initiative')
-@allowed([
-  'Deny'
-  'Audit'
-  'Disabled'
-])
-param geoComplianceEffect string = 'Deny'
 
 @description('Enforcement mode for the Microsoft Cloud Security Benchmark')
 @allowed([
@@ -60,16 +55,25 @@ module managementGroupsModule '../../modules/management-groups/managementGroup.b
 // ==========================================
 // 2. Governance & Compliance Layer 
 // ==========================================
-
-module geoComplianceInitiative '../../modules/governance/geo-compliance-initiative.bicep' = {
-  name: 'deploy-geo-compliance-initiative'
+var computedAllowedLocations = [for region in regionalConfig: region.location]
+module governancePolicyAssignments '../../modules/governance/policy-assignment.bicep' = [for policy in governancePolicies: {
+  name: 'deploy-${policy.name}'
   scope: managementGroup(rootManagementGroupName)
   params: {
-    allowedLocations: [for region in regionalConfig: region.location]
-    effect: geoComplianceEffect
+    policyNameSlug: policy.name
+    policyDefinitionId: policy.definitionId
+    policyDisplayName: policy.displayName
+    policyDescription: policy.description
+    // Automatically inject computed regions for geo-compliance, fallback to static params otherwise
+    policyParameters: policy.name == 'geo-compliance-assignment' ? {
+      listOfAllowedLocations: {
+        value: computedAllowedLocations
+      }
+    } : (policy.parameters ?? {})
+    enforcementEffect: policy.effect
   }
   dependsOn: [managementGroupsModule]
-}
+}]
 
 module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
   name: 'deploy-tagging-initiative'

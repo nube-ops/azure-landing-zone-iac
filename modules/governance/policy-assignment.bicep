@@ -1,5 +1,11 @@
 targetScope = 'managementGroup'
 
+@description('A short, human-readable slug for the policy assignment resource name')
+param policyNameSlug string
+
+@description('Optional scope flag for unique string generation')
+param scopeTypeFlag string = 'mg'
+
 @description('The fully qualified ID of the Azure Policy definition or initiative definition')
 param policyDefinitionId string
 
@@ -16,12 +22,13 @@ param policyParameters object = {}
 param enforcementEffect string = 'Deny'
 
 resource policyAssignment 'Microsoft.Authorization/policyAssignments@2023-04-01' = {
-  name: uniqueString(policyDefinitionId, scopeTypeFlag ?? 'mg')
-  displayName: policyDisplayName
-  description: policyDescription
+  name: take('${policyNameSlug}-${uniqueString(policyDefinitionId, scopeTypeFlag)}', 64)
   properties: {
+    displayName: policyDisplayName
+    description: policyDescription
     policyDefinitionId: policyDefinitionId
-    parameters: notEmpty(policyParameters) ? policyParameters : null
+    parameters: !empty(policyParameters) ? policyParameters : null
+    enforcementMode: enforcementEffect == 'Deny' ? 'Default' : 'DoNotEnforce'
     nonComplianceMessages: [
       {
         message: 'Resource violates organizational governance baseline: ${policyDisplayName}'
