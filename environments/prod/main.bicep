@@ -19,9 +19,6 @@ param managementGroups array
 @description('Mandatory tags to enforce across all child subscriptions')
 param requiredTags array
 
-@description('Array of governance policies driven by the universal policy assignment wrapper')
-param governancePolicies array
-
 @description('List of resource types explicitly disallowed by enterprise security baselines')
 param disallowedResourceTypes array
 
@@ -55,26 +52,48 @@ module managementGroupsModule '../../modules/management-groups/managementGroup.b
 // ==========================================
 // 2. Governance & Compliance Layer 
 // ==========================================
-var computedAllowedLocations = [for region in regionalConfig: region.location]
-
-module governancePolicyAssignments '../../modules/governance/policy-assignment.bicep' = [for policy in governancePolicies: {
-  name: 'deploy-${policy.name}'
+module geoComplianceInitiative '../../modules/governance/geo-compliance-initiative.bicep' = {
+  name: 'deploy-geo-compliance-initiative'
   scope: managementGroup(rootManagementGroupName)
   params: {
-    policyNameSlug: policy.name
-    policyDefinitionId: policy.definitionId
-    policyDisplayName: policy.displayName
-    policyDescription: policy.description
-    // Dynamically injects computed runtime regions for geo-compliance while falling back cleanly
-    policyParameters: policy.name == 'geo-compliance-assignment' ? {
-      listOfAllowedLocations: {
-        value: computedAllowedLocations
-      }
-    } : (policy.parameters ?? {})
-    enforcementEffect: policy.effect
+    allowedLocations: [for region in regionalConfig: region.location]
+    effect: 'Deny'
   }
   dependsOn: [managementGroupsModule]
-}]
+}
+
+module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
+  name: 'deploy-tagging-initiative'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    requiredTags: requiredTags
+  }
+  dependsOn: [managementGroupsModule]
+}
+
+module securityBenchmarkAssignment '../../modules/governance/microsoft-cloud-security-benchmark.bicep' = {
+  name: 'deploy-security-benchmark-assignment'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    enforcementMode: securityBenchmarkEnforcementMode
+  }
+  dependsOn: [managementGroupsModule]
+}
+
+module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
+  name: 'deploy-storage-access-hardening-initiative'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    disallowedResourceTypes: disallowedResourceTypes
+  }
+  dependsOn: [managementGroupsModule]
+}
+
+module auditResourcesWithoutTags '../../modules/governance/audit-resources-without-tags.bicep' = {
+  name: 'deploy-audit-resources-without-tags'
+  scope: managementGroup(rootManagementGroupName)
+  dependsOn: [managementGroupsModule]
+}
 
 // ==========================================
 // 3. Data-Driven Policy Exemptions Layer
@@ -91,7 +110,8 @@ module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' 
     policyAssignmentId: exemption.policyAssignmentId
   }
   dependsOn: [
-    governancePolicyAssignments  // Correctly points to the unified data-driven policy loop
+    storageInitiative
+    securityBenchmarkAssignment
   ]
 }]
 

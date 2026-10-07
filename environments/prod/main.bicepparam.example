@@ -41,50 +41,6 @@ param regionalConfig = [
 ]
 
 // ==========================================
-// Governance & Scoping Configurations
-// ==========================================
-
-param rootManagementGroupName = rootMgName
-
-param requiredTags = [
-  'Owner'
-  'Environment'
-  'CostCenter'
-]
-
-param governancePolicies = [
-  {
-    name: 'geo-compliance-assignment'
-    definitionId: '/providers/Microsoft.Authorization/policyDefinitions/e56962a6-4747-49cd-b67b-bf8b01975c4c'
-    displayName: 'Enterprise Geo-Compliance Baseline'
-    description: 'Enforces organization-wide allowed locations for resource deployment.'
-    effect: 'Deny'
-    parameters: {} // Handled dynamically via main.bicep's runtime computed evaluation
-  }
-]
-
-param securityBenchmarkEnforcementMode = 'DoNotEnforce' // Easily toggle to 'Default' for strict production enforcement later
-
-param disallowedResourceTypes = [
-  'Microsoft.Network/publicIPAddresses'
-]
-
-// ==========================================
-// Policy Exemptions & Operational Overrides
-// ==========================================
-
-param policyExemptions = [
-  {
-    name: 'exemption-allow-hub-public-ips'
-    displayName: 'Allow Public IPs for Connectivity Hub Firewall'
-    description: 'Exempts the connectivity subscription from the global public IP restriction to permit Azure Firewall deployment.'
-    exemptionCategory: 'Mitigated'
-    subscriptionId: '11111111-1111-1111-1111-111111111111'
-    policyAssignmentId: '/providers/Microsoft.Management/managementGroups/mg-fabrikam-us/providers/Microsoft.Authorization/policyAssignments/storage-access-hardening'
-  }
-]
-
-// ==========================================
 // Management Group Hierarchy (Topology Mapping)
 // ==========================================
 
@@ -128,6 +84,39 @@ param managementGroups = [
     name: '${rootMgName}-management'
     displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Management'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-platform'
+  }
+]
+
+// ==========================================
+// Governance & Scoping Configurations
+// ==========================================
+
+param rootManagementGroupName = 'your-root-management-group-name'
+
+param requiredTags = [
+  'Owner'
+  'Environment'
+  'CostCenter'
+]
+
+param securityBenchmarkEnforcementMode = 'DoNotEnforce' // Easily toggle to 'Default' for strict production enforcement later
+
+param disallowedResourceTypes = [
+  'Microsoft.Network/publicIPAddresses'
+]
+
+// ==========================================
+// Policy Exemptions & Operational Overrides
+// ==========================================
+
+param policyExemptions = [
+  {
+    name: 'exemption-allow-hub-public-ips'
+    displayName: 'Allow Public IPs for Connectivity Hub Firewall'
+    description: 'Exempts the connectivity subscription from the global public IP restriction to permit Azure Firewall deployment.'
+    exemptionCategory: 'Mitigated'
+    subscriptionId: '11111111-1111-1111-1111-111111111111'
+    policyAssignmentId: '/providers/Microsoft.Management/managementGroups/mg-fabrikam-us/providers/Microsoft.Authorization/policyAssignments/storage-access-hardening'
   }
 ]
 
