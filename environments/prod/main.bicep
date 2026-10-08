@@ -57,8 +57,8 @@ module rootManagementGroup '../../modules/management-groups/managementGroup.bice
 }
 
 // B. Deploy Child Management Groups depending explicitly on the Root
-module childManagementGroupsModule '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: if (mg.name != rootMgName) {
-  name: 'deploy-${mg.name}'
+module level1ManagementGroups '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: if (mg.name != rootMgName && mg.parentMgId == '/providers/Microsoft.Management/managementGroups/${rootMgName}') {
+  name: take('deploy-l1-${mg.name}', 64)
   params: {
     mgName: mg.name
     mgDisplayName: mg.displayName
@@ -66,6 +66,19 @@ module childManagementGroupsModule '../../modules/management-groups/managementGr
   }
   dependsOn: [
     rootManagementGroup
+  ]
+}]
+
+// C. Level 2 Leaf Child Groups (corp, online, connectivity, identity, management)
+module level2ManagementGroups '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: if (mg.name != rootMgName && mg.parentMgId != '/providers/Microsoft.Management/managementGroups/${rootMgName}') {
+  name: take('deploy-l2-${mg.name}', 64)
+  params: {
+    mgName: mg.name
+    mgDisplayName: mg.displayName
+    parentMgId: mg.parentMgId
+  }
+  dependsOn: [
+    level1ManagementGroups
   ]
 }]
 
@@ -79,7 +92,7 @@ module geoComplianceInitiative '../../modules/governance/geo-compliance-initiati
     allowedLocations: [for region in regionalConfig: region.location]
     effect: 'Deny'
   }
-  dependsOn: [childManagementGroupsModule]
+  dependsOn: [level2ManagementGroups]
 }
 
 module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
@@ -88,7 +101,7 @@ module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
   params: {
     requiredTags: requiredTags
   }
-  dependsOn: [childManagementGroupsModule]
+  dependsOn: [level2ManagementGroups]
 }
 
 module securityBenchmarkAssignment '../../modules/governance/microsoft-cloud-security-benchmark.bicep' = {
@@ -97,7 +110,7 @@ module securityBenchmarkAssignment '../../modules/governance/microsoft-cloud-sec
   params: {
     enforcementMode: securityBenchmarkEnforcementMode
   }
-  dependsOn: [childManagementGroupsModule]
+  dependsOn: [level2ManagementGroups]
 }
 
 module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
@@ -106,13 +119,13 @@ module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
   params: {
     disallowedResourceTypes: disallowedResourceTypes
   }
-  dependsOn: [childManagementGroupsModule]
+  dependsOn: [level2ManagementGroups]
 }
 
 module auditResourcesWithoutTags '../../modules/governance/audit-resources-without-tags.bicep' = {
   name: 'deploy-audit-resources-without-tags'
   scope: managementGroup(rootManagementGroupName)
-  dependsOn: [childManagementGroupsModule]
+  dependsOn: [level2ManagementGroups]
 }
 
 // ==========================================
@@ -120,7 +133,7 @@ module auditResourcesWithoutTags '../../modules/governance/audit-resources-witho
 // ==========================================
 
 module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' = [for exemption in policyExemptions: {
-  name: 'deploy-${exemption.name}'
+  name: take('deploy-${exemption.name}', 64)
   scope: subscription(exemption.subscriptionId)
   params: {
     exemptionName: exemption.name
@@ -146,6 +159,6 @@ module subscriptionAssociationsModule '../../modules/management-groups/subscript
     subscriptionIds: assoc.subscriptionIds
   }
   dependsOn: [
-    childManagementGroupsModule
+    level2ManagementGroups
   ]
 }]
