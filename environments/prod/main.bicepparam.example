@@ -21,8 +21,8 @@ using './main.bicep'
 // ==========================================
 // SINGLE SOURCE OF TRUTH (DRY Configuration)
 // ==========================================
-var orgName = 'contoso'
-var deploymentRegion = 'us'
+param orgName = 'contoso'
+param deploymentRegion = 'us'
 
 // Computed structural prefixes
 var rootMgName = 'mg-${orgName}-${deploymentRegion}'
@@ -90,8 +90,6 @@ param managementGroups = [
 // ==========================================
 // Governance & Scoping Configurations
 // ==========================================
-
-param rootManagementGroupName = rootMgName
 
 param requiredTags = [
   'Owner'
