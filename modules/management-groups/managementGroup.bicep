@@ -13,11 +13,11 @@ resource managementGroup 'Microsoft.Management/managementGroups@2024-02-01-previ
   name: mgName
   properties: {
     displayName: mgDisplayName
-    details: {
+    details: !empty(parentMgId) ? {
       parent: {
         id: parentMgId
       }
-    }
+    } : null
   }
 }
 
