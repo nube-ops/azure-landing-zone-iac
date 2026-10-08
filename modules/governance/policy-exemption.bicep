@@ -19,7 +19,7 @@ param exemptionCategory string
 @description('Fully qualified resource ID of the policy assignment being exempted')
 param policyAssignmentId string
 
-resource policyExemption 'Microsoft.Authorization/policyExemptions@2024-04-01' = {
+resource policyExemption 'Microsoft.Authorization/policyExemptions@2022-07-01-preview' = {
   name: exemptionName
   properties: {
     displayName: displayName
