@@ -48,7 +48,7 @@ param subscriptionAssociations array
 
 // A. Deploy Root Management Group first
 module rootManagementGroup '../../modules/management-groups/managementGroup.bicep' = {
-  name: 'deploy-${rootMgName}'
+  name: 'module-deploy-${rootMgName}'
   params: {
     mgName: rootMgName
     mgDisplayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Organization Root'
