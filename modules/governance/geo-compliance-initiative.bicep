@@ -1,6 +1,7 @@
 targetScope = 'managementGroup'
 
 @description('Display name of the geo-compliance policy set definition (initiative).')
+@maxLength(64)
 param initiativeDisplayName string = 'Root-Geo-Compliance-Initiative'
 
 @description('Description of the geo-compliance initiative.')
@@ -36,7 +37,6 @@ resource rootGeoComplianceInitiative 'Microsoft.Authorization/policySetDefinitio
       {
         policyDefinitionId: policyAllowedLocationsId
         policyDefinitionReferenceId: 'AllowedLocationsResources'
-        definitionVersion: '1.1.0'
         parameters: {
           listOfAllowedLocations: {
             value: allowedLocations
@@ -49,7 +49,6 @@ resource rootGeoComplianceInitiative 'Microsoft.Authorization/policySetDefinitio
       {
         policyDefinitionId: policyAllowedLocationsRgId
         policyDefinitionReferenceId: 'AllowedLocationsResourceGroups'
-        definitionVersion: '1.1.0'
         parameters: {
           listOfAllowedLocations: {
             value: allowedLocations

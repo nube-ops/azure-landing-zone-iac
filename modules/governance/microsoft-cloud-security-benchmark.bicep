@@ -1,7 +1,8 @@
 targetScope = 'managementGroup'
 
-@description('Name of the policy assignment')
-param policyAssignmentName string = 'microsoft-cloud-security-benchmark'
+@description('Name of the policy assignment (Max 24 characters for Azure Policy Assignment names)')
+@maxLength(24)
+param policyAssignmentName string = 'mcsb-assignment'
 
 @description('Enforcement mode: Default audits/denies or DoNotEnforce tests without action')
 @allowed([
