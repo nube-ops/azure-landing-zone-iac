@@ -9,11 +9,17 @@ targetScope = 'tenant'
 param regionalConfig array
 
 // 2. Management Group Topology & Scoping
-@description('Name of the organizational root management group for policy scoping')
-param rootManagementGroupName string
+@description('Organization name for resource naming')
+param orgName string
+
+@description('Deployment region code')
+param deploymentRegion string
 
 @description('Array of management groups defining the organizational hierarchy')
 param managementGroups array
+
+var rootMgName = 'mg-${orgName}-${deploymentRegion}'
+var rootManagementGroupName = rootMgName
 
 // 3. Governance & Security Policy Inputs
 @description('Mandatory tags to enforce across all child subscriptions')
@@ -40,13 +46,27 @@ param subscriptionAssociations array
 // 1. Data-Driven Management Groups Deployment
 // ==========================================
 
-module managementGroupsModule '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: {
+// A. Deploy Root Management Group first
+module rootManagementGroup '../../modules/management-groups/managementGroup.bicep' = {
+  name: 'deploy-${rootMgName}'
+  params: {
+    mgName: rootMgName
+    mgDisplayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Organization Root'
+    parentMgId: ''
+  }
+}
+
+// B. Deploy Child Management Groups depending explicitly on the Root
+module childManagementGroupsModule '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: if (mg.name != rootMgName) {
   name: 'deploy-${mg.name}'
   params: {
     mgName: mg.name
     mgDisplayName: mg.displayName
     parentMgId: mg.parentMgId
   }
+  dependsOn: [
+    rootManagementGroup
+  ]
 }]
 
 // ==========================================
@@ -59,7 +79,7 @@ module geoComplianceInitiative '../../modules/governance/geo-compliance-initiati
     allowedLocations: [for region in regionalConfig: region.location]
     effect: 'Deny'
   }
-  dependsOn: [managementGroupsModule]
+  dependsOn: [childManagementGroupsModule]
 }
 
 module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
@@ -68,7 +88,7 @@ module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
   params: {
     requiredTags: requiredTags
   }
-  dependsOn: [managementGroupsModule]
+  dependsOn: [childManagementGroupsModule]
 }
 
 module securityBenchmarkAssignment '../../modules/governance/microsoft-cloud-security-benchmark.bicep' = {
@@ -77,7 +97,7 @@ module securityBenchmarkAssignment '../../modules/governance/microsoft-cloud-sec
   params: {
     enforcementMode: securityBenchmarkEnforcementMode
   }
-  dependsOn: [managementGroupsModule]
+  dependsOn: [childManagementGroupsModule]
 }
 
 module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
@@ -86,13 +106,13 @@ module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
   params: {
     disallowedResourceTypes: disallowedResourceTypes
   }
-  dependsOn: [managementGroupsModule]
+  dependsOn: [childManagementGroupsModule]
 }
 
 module auditResourcesWithoutTags '../../modules/governance/audit-resources-without-tags.bicep' = {
   name: 'deploy-audit-resources-without-tags'
   scope: managementGroup(rootManagementGroupName)
-  dependsOn: [managementGroupsModule]
+  dependsOn: [childManagementGroupsModule]
 }
 
 // ==========================================
@@ -126,6 +146,6 @@ module subscriptionAssociationsModule '../../modules/management-groups/subscript
     subscriptionIds: assoc.subscriptionIds
   }
   dependsOn: [
-    managementGroupsModule
+    childManagementGroupsModule
   ]
 }]
