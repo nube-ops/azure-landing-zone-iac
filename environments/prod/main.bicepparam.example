@@ -48,7 +48,7 @@ param managementGroups = [
   {
     name: rootMgName
     displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Organization Root'
-    parentMgId: 'TENANT_ROOT' // Resolved dynamically in main.bicep
+    parentMgId: '' // Resolved dynamically in main.bicep
   }
   {
     name: '${rootMgName}-landingzones'
