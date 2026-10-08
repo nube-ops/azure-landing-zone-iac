@@ -22,10 +22,10 @@ using './main.bicep'
 // SINGLE SOURCE OF TRUTH (DRY Configuration)
 // ==========================================
 param orgName = 'contoso'
-param deploymentRegion = 'us'
+param geoPrefix = 'us'
 
 // Computed structural prefixes
-var rootMgName = 'mg-${orgName}-${deploymentRegion}'
+var rootMgName = 'mg-${orgName}-${geoPrefix}'
 
 param regionalConfig = [
   {
@@ -47,42 +47,42 @@ param regionalConfig = [
 param managementGroups = [
   {
     name: rootMgName
-    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Organization Root'
+    displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Organization Root'
     parentMgId: '' // Resolved dynamically in main.bicep
   }
   {
     name: '${rootMgName}-landingzones'
-    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Landing Zones'
+    displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Landing Zones'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}'
   }
   {
     name: '${rootMgName}-corp'
-    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Corp'
+    displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Corp'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-landingzones'
   }
   {
     name: '${rootMgName}-online'
-    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Online'
+    displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Online'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-landingzones'
   }
   {
     name: '${rootMgName}-platform'
-    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Platform'
+    displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Platform'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}'
   }
   {
     name: '${rootMgName}-connectivity'
-    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Connectivity'
+    displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Connectivity'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-platform'
   }
   {
     name: '${rootMgName}-identity'
-    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Identity'
+    displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Identity'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-platform'
   }
   {
     name: '${rootMgName}-management'
-    displayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Management'
+    displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Management'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-platform'
   }
 ]

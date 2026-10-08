@@ -12,13 +12,14 @@ param regionalConfig array
 @description('Organization name for resource naming')
 param orgName string
 
-@description('Deployment region code')
-param deploymentRegion string
+@description('Geographical scope prefix for organizational tenant hierarchy (e.g., us, amer, global)')
+param geoPrefix string
 
 @description('Array of management groups defining the organizational hierarchy')
 param managementGroups array
 
-var rootMgName = 'mg-${orgName}-${deploymentRegion}'
+// Dynamic evaluation variables
+var rootMgName = 'mg-${orgName}-${geoPrefix}'
 var rootManagementGroupName = rootMgName
 
 // 3. Governance & Security Policy Inputs
@@ -46,17 +47,17 @@ param subscriptionAssociations array
 // 1. Data-Driven Management Groups Deployment
 // ==========================================
 
-// A. Deploy Root Management Group first
+// 1A. Deploy Root Management Group first
 module rootManagementGroup '../../modules/management-groups/managementGroup.bicep' = {
   name: 'module-deploy-${rootMgName}'
   params: {
     mgName: rootMgName
-    mgDisplayName: '${toUpper(orgName)} ${toUpper(deploymentRegion)} Organization Root'
+    mgDisplayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Organization Root'
     parentMgId: ''
   }
 }
 
-// B. Deploy Child Management Groups depending explicitly on the Root
+// 1B. Deploy Child Management Groups depending explicitly on the Root
 module level1ManagementGroups '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: if (mg.name != rootMgName && mg.parentMgId == '/providers/Microsoft.Management/managementGroups/${rootMgName}') {
   name: take('deploy-l1-${mg.name}', 64)
   params: {
@@ -69,7 +70,7 @@ module level1ManagementGroups '../../modules/management-groups/managementGroup.b
   ]
 }]
 
-// C. Level 2 Leaf Child Groups (corp, online, connectivity, identity, management)
+// 1C. Level 2 Leaf Child Groups (corp, online, connectivity, identity, management)
 module level2ManagementGroups '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: if (mg.name != rootMgName && mg.parentMgId != '/providers/Microsoft.Management/managementGroups/${rootMgName}') {
   name: take('deploy-l2-${mg.name}', 64)
   params: {
@@ -131,7 +132,7 @@ module auditResourcesWithoutTags '../../modules/governance/audit-resources-witho
 // ==========================================
 // 3. Data-Driven Policy Exemptions Layer
 // ==========================================
-
+// REMEDIATION: Retain the data-driven DRY loop while ensuring comprehensive governance dependencies.
 module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' = [for exemption in policyExemptions: {
   name: take('deploy-${exemption.name}', 64)
   scope: subscription(exemption.subscriptionId)
@@ -142,9 +143,13 @@ module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' 
     exemptionCategory: exemption.exemptionCategory
     policyAssignmentId: exemption.policyAssignmentId
   }
+  // Enforce complete dependency barrier against all governance initiatives
   dependsOn: [
-    storageInitiative
+    geoComplianceInitiative
+    taggingInitiative
     securityBenchmarkAssignment
+    storageInitiative
+    auditResourcesWithoutTags
   ]
 }]
 
