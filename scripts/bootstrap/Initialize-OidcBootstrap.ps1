@@ -22,9 +22,9 @@
       - Advanced Security & Modern OIDC Federation: Resolves immutable GitHub user and repository 
         numeric IDs via the GitHub API to configure secure OpenID Connect (OIDC) federated credentials, 
         preventing common deployment authentication failures (AADSTS700213).
-      - Idempotent Tenant Root RBAC Provisioning: Automatically assigns both 'Contributor' and 
-        'Resource Policy Contributor' roles at the Tenant Root Scope ("/") to ensure seamless 
-        orchestration of management group hierarchies and governance policy compliance initiatives.
+      - Idempotent Tenant Root RBAC Provisioning: Automatically assigns 'Contributor', 'Resource Policy Contributor', 
+        and 'User Access Administrator' roles at the Tenant Root Scope ("/") to ensure seamless orchestration of 
+        management group hierarchies, governance policy compliance, and dynamic RBAC/subscription association delegation.
       - Idempotent Upsert Architecture: Safely checks for existing Resource Groups, User-Assigned 
         Managed Identities (UMI), federated credentials, and tenant root role assignments to ensure 
         safe, repeatable execution without duplicate resource creation.
@@ -450,48 +450,37 @@ Invoke-WithRetry -MaxRetries 2 -ErrorMessage "Bootstrap aborted: OIDC federation
 }
 
 # ==========================================
-# 7. Assign Required Roles at Tenant Root Scope (Idempotent Checks)
+# 7. Assign Required Roles at Tenant Root Scope (DRY Array Loop)
 # ==========================================
-Write-Host ""
-Write-Output "Retrieving Principal ID and Client ID for User-Assigned Managed Identity '$IdentityName'..."
-$rawPrincipalId = az identity show --name $IdentityName --resource-group $ResourceGroupName --query principalId --output tsv
-$principalId = if ($rawPrincipalId) { $rawPrincipalId.Trim() } else { "" }
+Write-Host "`nRetrieving identity attributes for '$IdentityName'..." -ForegroundColor Cyan
+$principalId = (az identity show --name $IdentityName --resource-group $ResourceGroupName --query principalId --output tsv).Trim()
+$clientId    = (az identity show --name $IdentityName --resource-group $ResourceGroupName --query clientId --output tsv).Trim()
+$tenantId    = (az account show --query tenantId --output tsv).Trim()
 
-$rawClientId = az identity show --name $IdentityName --resource-group $ResourceGroupName --query clientId --output tsv
-$clientId = if ($rawClientId) { $rawClientId.Trim() } else { "" }
+# Array of roles required for full Landing Zone orchestration:
+# 1. Contributor: Subscription management & deployment what-if checks
+# 2. Resource Policy Contributor: Creation of policy definitions/initiatives
+# 3. User Access Administrator: Required to grant the identity RBAC delegation permissions for subscription associations and role assignment operations. Moving subscriptions into their management groups. 
+$requiredRoles = @(
+    'Contributor',
+    'Resource Policy Contributor',
+    'User Access Administrator'
+)
 
-# 7a. Assign 'Contributor' role at the Tenant Root Scope ("/")
-# Required to grant the deployment principal permissions for tenant-scoped 
-# Bicep orchestrations and what-if validation dry runs.
-$existingRootRole = az role assignment list --assignee $principalId --scope "/" --role 'Contributor' --query "[0].id" --output tsv 2>$null
+foreach ($role in $requiredRoles) {
+    $existingRole = az role assignment list --assignee $principalId --scope "/" --role $role --query "[0].id" --output tsv 2>$null
 
-if ([string]::IsNullOrWhiteSpace($existingRootRole)) {
-    Write-Output "Assigning 'Contributor' role at tenant root scope ('/')..."
-    az role assignment create `
-        --assignee-object-id $principalId `
-        --assignee-principal-type ServicePrincipal `
-        --role 'Contributor' `
-        --scope "/" `
-        --output none
-} else {
-    Write-Output "Contributor role assignment at tenant root already exists. Skipping assignment."
-}
-
-# 7b. Assign 'Resource Policy Contributor' role at the Tenant Root Scope ("/")
-# Required so the identity can create policy definitions and assignments 
-# across the management group hierarchy before the groups are formally provisioned.
-$existingPolicyRole = az role assignment list --assignee $principalId --scope "/" --role 'Resource Policy Contributor' --query "[0].id" --output tsv 2>$null
-
-if ([string]::IsNullOrWhiteSpace($existingPolicyRole)) {
-    Write-Output "Assigning 'Resource Policy Contributor' role at tenant root scope ('/')..."
-    az role assignment create `
-        --assignee-object-id $principalId `
-        --assignee-principal-type ServicePrincipal `
-        --role 'Resource Policy Contributor' `
-        --scope "/" `
-        --output none
-} else {
-    Write-Output "Resource Policy Contributor role assignment already exists. Skipping assignment."
+    if ([string]::IsNullOrWhiteSpace($existingRole)) {
+        Write-Host "Assigning '$role' role at tenant root scope ('/')..." -ForegroundColor Cyan
+        az role assignment create `
+            --assignee-object-id $principalId `
+            --assignee-principal-type ServicePrincipal `
+            --role $role `
+            --scope "/" `
+            --output none
+    } else {
+        Write-Host "Role '$role' is already assigned at tenant root scope ('/'). Skipping." -ForegroundColor Green
+    }
 }
 
 # 8. Output Required GitHub Secrets & Optional Auto-Configuration

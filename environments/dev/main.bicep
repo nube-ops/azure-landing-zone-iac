@@ -71,7 +71,7 @@ module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
   dependsOn: [managementGroupsModule]
 }
 
-module securityBenchmarkAssignment '../../modules/governance/microsoft-cloud-security-benchmark.bicep' = {
+module securityBenchmarkAssignment '../../modules/governance/cloud-security-benchmark.bicep' = {
   name: 'deploy-security-benchmark-assignment'
   scope: managementGroup(rootManagementGroupName)
   params: {
