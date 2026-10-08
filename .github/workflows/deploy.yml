@@ -37,8 +37,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - environment: dev
+            location: centralus
+            mode: what-if
           - environment: prod
             location: centralus
+            mode: deploy
 
     permissions:
       id-token: write
@@ -68,11 +72,22 @@ jobs:
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
 
-      - name: Run Tenant What-If Dry Run
+      - name: Run Tenant What-If Dry Run (Dev Environment)
+        if: matrix.mode == 'what-if'
         uses: azure/cli@v2
         with:
           inlineScript: |
             az deployment tenant what-if \
+              --location ${{ matrix.location }} \
+              --template-file environments/${{ matrix.environment }}/main.bicep \
+              --parameters environments/${{ matrix.environment }}/main.bicepparam
+
+      - name: Run Tenant Enterprise Deployment (Prod Environment)
+        if: matrix.mode == 'deploy'
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az deployment tenant create \
               --location ${{ matrix.location }} \
               --template-file environments/${{ matrix.environment }}/main.bicep \
               --parameters environments/${{ matrix.environment }}/main.bicepparam

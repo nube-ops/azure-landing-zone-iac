@@ -104,13 +104,20 @@ What Initialize-OidcBootstrap.ps1 Accomplishes:
 * **Automated Preflight Diagnostics:** Validates active Azure CLI (`az`) and GitHub CLI (`gh`) sessions upfront, failing fast with precise remediation instructions if missing.
 * **Intelligent Context Auto-Discovery:** Dynamically detects your active Azure Subscription ID, Tenant ID, and local Git remote metadata (Owner/Repository) with a graceful fallback safety net.
 * **Resilient Transient Error Handling:** Built using a reusable retry wrapper helper function (`Invoke-WithRetry`) to gracefully ride out cloud and API network blips.
-* **Advanced Security & Modern OIDC Federation:** Resolves immutable GitHub user and repository numeric IDs via the GitHub API to configure secure OpenID Connect (OIDC) federated credentials (`api://AzureADTokenExchange`), preventing common deployment authentication failures (`AADSTS700213`).
+* **Advanced Security & Modern OIDC Federation:** Resolves immutable GitHub user and repository numeric IDs via the GitHub API to configure secure OpenID Connect (OIDC) federated credentials (`api://AzureADTokenExchange`), preventing common deployment authentication failures (AADSTS700213).
 * **Idempotent Tenant Root RBAC & Upsert Architecture:** Safely checks for and provisions required resources (Resource Groups, User-Assigned Managed Identities, OIDC credentials, and tenant-root least-privilege role assignments) to ensure secure, repeatable multi-run execution without duplicate resource creation.
 * **Automated Secret Syncing (Zero-Touch CI/CD):** Authenticates via the GitHub CLI to automatically push required configuration secrets (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `TENANT_ROOT_MANAGEMENT_GROUP_ID`) straight into your GitHub repository settings.
 * **Live Visual Verification:** Outputs formatted tabular Azure resource verifications and active repository secret lists upon completion for transparent auditing.
 
-### Phase 4: 
-
+### Phase 4: Management Group Topology & Deployment Execution
+* Customizing the Architecture Topology: If organizational modifications are required, you must edit the Management Group Hierarchy (Topology Mapping) section and subscription associations inside inside `environments/prod/main.bicepparam`.
+* Default Out-of-the-Box Deployment: If no custom modifications are necessary, the pipeline will deploy the enterprise-scale landing zone architecture topology exactly as documented out-of-the-box.
+* Execution Workflow: The parameter file feeds directly into the tenant-level Bicep orchestration template (`main.bicep`), driving data-driven creation of management groups, governance policies, and subscription associations.
+* Run the following command block to initiate the workflow, stream real-time execution status, and automatically dump logs if any failure occurs:
+```powershell
+gh workflow run deploy.yml; gh run watch --exit-status; gh run view $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') --log-failed
+```
+* If the What-if deployment passes 
 
 
 🔒 Security & Best Practices
