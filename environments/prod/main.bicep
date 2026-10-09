@@ -154,12 +154,8 @@ module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' 
     displayName: exemption.displayName
     exemptionDescription: exemption.description
     exemptionCategory: exemption.exemptionCategory
-    policyAssignmentId: exemption.policyAssignmentId
+    policyAssignmentId: storageInitiativeAssignment.outputs.policyAssignmentId
   }
-  // Explicit barrier: Exemptions MUST execute after assignments are live
-  dependsOn: [
-    storageInitiativeAssignment
-  ]
 }]
 
 // ==========================================
