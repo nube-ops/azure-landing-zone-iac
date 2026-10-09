@@ -161,7 +161,7 @@ module storageInitiativeAssignment '../../modules/governance/policy-assignment.b
   name: 'deploy-storage-hardening-assignment'
   scope: managementGroup(rootManagementGroupName)
   params: {
-    policyNameSlug: 'stg-harden' // Truncated slug enforces <= 24 character assignment name limit
+    policyNameSlug: 'stg-guard' // Truncated slug enforces <= 24 character assignment name limit
     policyDefinitionId: storageInitiative.outputs.initiativeId
     policyDisplayName: 'Deploy Storage Access Hardening Policy Set'
     policyDescription: 'Enforces storage hardening baselines across management group hierarchy'
@@ -179,13 +179,17 @@ module auditResourcesWithoutTagsAssignment '../../modules/governance/policy-assi
   }
 }
 
-// C. Custom Policy Assignments (Scope Enforcement Layer)
-
-
 // ==========================================
 // 3. Data-Driven Policy Exemptions Layer
 // ==========================================
-// REMEDIATION: Retain the data-driven DRY loop while ensuring comprehensive governance dependencies.
+// Map target slugs dynamically to assignment outputs
+var assignmentIdMap = {
+  'geo-guard': geoComplianceAssignment.outputs.policyAssignmentId
+  'tag-guard': taggingAssignment.outputs.policyAssignmentId
+  'stg-guard': storageInitiativeAssignment.outputs.policyAssignmentId
+  'audit-tags': auditResourcesWithoutTagsAssignment.outputs.policyAssignmentId
+}
+
 module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' = [for exemption in policyExemptions: {
   name: take('deploy-${exemption.name}', 64)
   scope: subscription(exemption.subscriptionId)
@@ -194,7 +198,10 @@ module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' 
     displayName: exemption.displayName
     exemptionDescription: exemption.description
     exemptionCategory: exemption.exemptionCategory
-    policyAssignmentId: storageInitiativeAssignment.outputs.policyAssignmentId
+    // Dynamic lookup driven by parameter slug
+    policyAssignmentId: assignmentIdMap[exemption.targetSlug]
+    // Safely evaluate optional temporal parameter
+    expiresOn: exemption.?expiresOn ?? ''
   }
 }]
 

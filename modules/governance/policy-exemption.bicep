@@ -19,6 +19,9 @@ param exemptionCategory string
 @description('Fully qualified resource ID of the policy assignment being exempted')
 param policyAssignmentId string
 
+@description('Optional expiration date for temporal compliance exemptions (ISO 8601 format YYYY-MM-DDThh:mm:ssZ)')
+param expiresOn string = ''
+
 resource policyExemption 'Microsoft.Authorization/policyExemptions@2022-07-01-preview' = {
   name: exemptionName
   properties: {
@@ -26,6 +29,7 @@ resource policyExemption 'Microsoft.Authorization/policyExemptions@2022-07-01-pr
     description: exemptionDescription
     exemptionCategory: exemptionCategory
     policyAssignmentId: policyAssignmentId
+    expiresOn: !empty(expiresOn) ? expiresOn : null
   }
 }
 
