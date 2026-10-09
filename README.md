@@ -110,16 +110,32 @@ What Initialize-OidcBootstrap.ps1 Accomplishes:
 * **Live Visual Verification:** Outputs formatted tabular Azure resource verifications and active repository secret lists upon completion for transparent auditing.
 
 ### Phase 4: Management Group Topology & Deployment Execution
-* Customizing the Architecture Topology: If organizational modifications are required, you must edit the Management Group Hierarchy (Topology Mapping) section and subscription associations inside inside `environments/prod/main.bicepparam`.
-* Default Out-of-the-Box Deployment: If no custom modifications are necessary, the pipeline will deploy the enterprise-scale landing zone architecture topology exactly as documented out-of-the-box.
-* Execution Workflow: The parameter file feeds directly into the tenant-level Bicep orchestration template (`main.bicep`), driving data-driven creation of management groups, governance policies, and subscription associations.
-* Run the following command block to initiate the workflow, stream real-time execution status, and automatically dump logs if any failure occurs:
+* **Customizing the Architecture Topology:** If organizational modifications are required, edit the Management Group Hierarchy (Topology Mapping) section and subscription associations inside `environments/prod/main.bicepparam`.
+* **Default Out-of-the-Box Deployment:** If no custom modifications are necessary, the pipeline deploys the enterprise-scale landing zone architecture topology exactly as documented out-of-the-box.
+* **Execution Workflow:** The parameter file feeds directly into the tenant-level Bicep orchestration template (`main.bicep`), driving data-driven creation of management groups, governance policies, and subscription associations.
+* **Pipeline Monitoring & Verification:** Execute the following automation command block via the GitHub CLI to trigger the deployment workflow, stream real-time execution status, validate convergence, and automatically dump logs if any failure occurs:
 ```powershell
 gh workflow run deploy.yml; gh run watch --exit-status; gh run view $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') --log-failed
 ```
-* a successful deployment will create the managment group hierarchy, assign the policies to their management group and move the subcriptions into their management group.
+### 🔍 Post-Deployment Verification
+To empirically verify that your tenant-level orchestration, policy assignments, and subscription associations have successfully converged, execute the following Azure CLI verification commands:
 
-
+* **Validate Management Group Hierarchy:**
+```powershell
+az account management-group list --query "[].{Name:name, DisplayName:displayName, ID:id}" --output table
+```
+* **Verify Tenant Subscription Inventory:**
+```powershell
+az account list --all --output table
+```
+* **Audit Inherited Policy Assignments at Root Scope:**
+```powershell
+az policy assignment list --scope "/providers/Microsoft.Management/managementGroups/mg-contoso-us" --query "[].{Name:name, DisplayName:displayName, Enforcement:enforcementMode}" --output table
+```
+* **Confirm Scoped Policy Exemption Lifecycle:**
+```powershell
+az policy exemption show --name "exemption-allow-hub-public-ips" --scope "/subscriptions/11111111-1111-1111-1111-111111111111" --output table
+```
 🔒 Security & Best Practices
 * Zero Hardcoded Secrets: All environment-specific subscription IDs, client IDs, and names are injected dynamically via parameters or parameter files.
 * Idempotent Automation: PowerShell bootstrap scripts utilize defensive, state-aware checking to ensure safe, repeatable multi-run execution without manual state cleanup.
