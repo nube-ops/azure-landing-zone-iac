@@ -86,6 +86,7 @@ module level2ManagementGroups '../../modules/management-groups/managementGroup.b
 // ==========================================
 // 2. Governance & Compliance Layer 
 // ==========================================
+// 2A. Policy Set Definition Layer (Initiatives)
 module geoComplianceInitiative '../../modules/governance/geo-compliance-initiative.bicep' = {
   name: 'deploy-geo-compliance-initiative'
   scope: managementGroup(rootManagementGroupName)
@@ -114,6 +115,12 @@ module securityBenchmarkAssignment '../../modules/governance/cloud-security-benc
   dependsOn: [level2ManagementGroups]
 }
 
+module auditResourcesWithoutTags '../../modules/governance/audit-resources-without-tags.bicep' = {
+  name: 'deploy-audit-resources-without-tags'
+  scope: managementGroup(rootManagementGroupName)
+  dependsOn: [level2ManagementGroups]
+}
+
 module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
   name: 'deploy-storage-access-hardening-initiative'
   scope: managementGroup(rootManagementGroupName)
@@ -123,18 +130,12 @@ module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
   dependsOn: [level2ManagementGroups]
 }
 
-module auditResourcesWithoutTags '../../modules/governance/audit-resources-without-tags.bicep' = {
-  name: 'deploy-audit-resources-without-tags'
-  scope: managementGroup(rootManagementGroupName)
-  dependsOn: [level2ManagementGroups]
-}
-
-// 2B. Policy Assignment Layer (Ensures Assignment Resource Exists)
+// 2a. Policy Definition & Policy Assignment Layer (Ensures Assignment Resource Exists)
 module storageInitiativeAssignment '../../modules/governance/policy-assignment.bicep' = {
   name: 'deploy-storage-hardening-assignment'
   scope: managementGroup(rootManagementGroupName)
   params: {
-    policyNameSlug: 'deploy-storage-access-hardening-initiative'
+    policyNameSlug: 'stg-harden' // Truncated slug enforces <= 24 character assignment name limit
     policyDefinitionId: storageInitiative.outputs.initiativeId
     policyDisplayName: 'Deploy Storage Access Hardening Policy Set'
     policyDescription: 'Enforces storage hardening baselines across management group hierarchy'
