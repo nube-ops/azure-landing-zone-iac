@@ -30,7 +30,6 @@ var assignmentName = take('${safeSlug}-${assignmentHash}', 24)
 resource policyAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01' = {
   name: assignmentName
   location: deployment().location
-  // Mandatory SystemAssigned Managed Identity for 'Modify' & 'DeployIfNotExists' policies
   identity: {
     type: 'SystemAssigned'
   }
@@ -40,11 +39,6 @@ resource policyAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01'
     policyDefinitionId: policyDefinitionId
     parameters: !empty(policyParameters) ? policyParameters : null
     enforcementMode: enforcementEffect == 'Deny' ? 'Default' : 'DoNotEnforce'
-    nonComplianceMessages: [
-      {
-        message: 'Resource violates organizational governance baseline: ${policyDisplayName}'
-      }
-    ]
   }
 }
 
