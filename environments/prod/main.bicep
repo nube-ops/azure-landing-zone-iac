@@ -155,13 +155,9 @@ module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' 
     exemptionCategory: exemption.exemptionCategory
     policyAssignmentId: exemption.policyAssignmentId
   }
-  // Enforce complete dependency barrier against all governance initiatives
+  // Explicit barrier: Exemptions MUST execute after assignments are live
   dependsOn: [
     storageInitiativeAssignment
-    geoComplianceInitiative
-    taggingInitiative
-    securityBenchmarkAssignment
-    auditResourcesWithoutTags
   ]
 }]
 
