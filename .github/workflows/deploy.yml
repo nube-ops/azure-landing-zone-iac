@@ -72,6 +72,38 @@ jobs:
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
 
+      - name: Generic Multi-Scope Context Warmup
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            echo "=== Starting Generic OIDC Token Context Warmup ==="
+            
+            # 1. Dynamically retrieve all subscription IDs accessible to the OIDC principal
+            SUBS=$(az account list --query "[].id" -o tsv)
+            
+            # 2. Iterate and pre-warm access tokens across all scoped environments
+            for SUB_ID in $SUBS; do
+              echo "Pre-warming ARM access token cache for target subscription: $SUB_ID"
+              
+              # Poll target subscription scope up to 5 times with dynamic backoff
+              RETRY_COUNT=0
+              MAX_RETRIES=5
+              SUCCESS=false
+              
+              until [ $RETRY_COUNT -ge $MAX_RETRIES ] || [ "$SUCCESS" = true ]; do
+                if az account set --subscription "$SUB_ID" --output none 2>/dev/null; then
+                  SUCCESS=true
+                  echo "Successfully established context for $SUB_ID"
+                else
+                  RETRY_COUNT=$((RETRY_COUNT+1))
+                  echo "Token replication pending for $SUB_ID. Retry $RETRY_COUNT/$MAX_RETRIES in 3s..."
+                  sleep 3
+                fi
+              done
+            done
+
+            echo "=== Token Context Warmup Complete ==="
+          
       - name: Run Tenant What-If Dry Run (Dev Environment)
         if: matrix.mode == 'what-if'
         uses: azure/cli@v2
