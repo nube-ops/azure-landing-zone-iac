@@ -23,12 +23,17 @@ param enforcementEffect string = 'Deny'
 
 // Defensive Engineering: Guarantee 10-char max slug prefix so the 13-char uniqueString hash is never truncated
 var safeSlug = take(policyNameSlug, 10)
-var assignmentHash = uniqueString(policyDefinitionId, scopeTypeFlag)
+var assignmentHash = uniqueString(managementGroup().id, policyDefinitionId, scopeTypeFlag)
 var assignmentName = take('${safeSlug}-${assignmentHash}', 24)
 
-// The policy assignment name length must not exceed '24' characters.
-resource policyAssignment 'Microsoft.Authorization/policyAssignments@2023-04-01' = {
+// Policy Assignment Resource
+resource policyAssignment 'Microsoft.Authorization/policyAssignments@2022-06-01' = {
   name: assignmentName
+  location: deployment().location
+  // Mandatory SystemAssigned Managed Identity for 'Modify' & 'DeployIfNotExists' policies
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     displayName: policyDisplayName
     description: policyDescription
@@ -43,4 +48,6 @@ resource policyAssignment 'Microsoft.Authorization/policyAssignments@2023-04-01'
   }
 }
 
+// Outputs
 output policyAssignmentId string = policyAssignment.id
+output policyAssignmentPrincipalId string = policyAssignment.identity.principalId

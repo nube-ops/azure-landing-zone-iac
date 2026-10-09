@@ -117,7 +117,7 @@ What Initialize-OidcBootstrap.ps1 Accomplishes:
 ```powershell
 gh workflow run deploy.yml; gh run watch --exit-status; gh run view $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') --log-failed
 ```
-* If the What-if deployment passes 
+* a successful deployment will create the managment group hierarchy, assign the policies to their management group and move the subcriptions into their management group.
 
 
 🔒 Security & Best Practices

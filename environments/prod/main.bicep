@@ -179,6 +179,9 @@ module auditResourcesWithoutTagsAssignment '../../modules/governance/policy-assi
   }
 }
 
+// C. Custom Policy Assignments (Scope Enforcement Layer)
+
+
 // ==========================================
 // 3. Data-Driven Policy Exemptions Layer
 // ==========================================
@@ -209,3 +212,13 @@ module subscriptionAssociationsModule '../../modules/management-groups/subscript
     level2ManagementGroups
   ]
 }]
+
+// ==========================================
+// 5. Governance Identity Outputs
+// ==========================================
+
+@description('Principal ID of the System-Assigned Managed Identity assigned to the Tagging Policy')
+output taggingPolicyPrincipalId string = taggingAssignment.outputs.policyAssignmentPrincipalId
+
+@description('Principal ID of the System-Assigned Managed Identity assigned to the Storage Hardening Policy')
+output storagePolicyPrincipalId string = storageInitiativeAssignment.outputs.policyAssignmentPrincipalId
