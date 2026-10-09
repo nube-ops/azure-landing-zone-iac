@@ -86,7 +86,19 @@ module level2ManagementGroups '../../modules/management-groups/managementGroup.b
 // ==========================================
 // 2. Governance & Compliance Layer 
 // ==========================================
-// 2A. Policy Set Definition Layer (Initiatives)
+
+// Built-in Security Baseline Layer
+module securityBenchmarkAssignment '../../modules/governance/cloud-security-benchmark.bicep' = {
+  name: 'deploy-security-benchmark-assignment'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    enforcementMode: securityBenchmarkEnforcementMode
+  }
+  dependsOn: [level2ManagementGroups]
+}
+
+
+// A. Custom Policy Set Definitions (Initiative Layer)
 module geoComplianceInitiative '../../modules/governance/geo-compliance-initiative.bicep' = {
   name: 'deploy-geo-compliance-initiative'
   scope: managementGroup(rootManagementGroupName)
@@ -106,11 +118,11 @@ module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
   dependsOn: [level2ManagementGroups]
 }
 
-module securityBenchmarkAssignment '../../modules/governance/cloud-security-benchmark.bicep' = {
-  name: 'deploy-security-benchmark-assignment'
+module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
+  name: 'deploy-storage-access-hardening-initiative'
   scope: managementGroup(rootManagementGroupName)
   params: {
-    enforcementMode: securityBenchmarkEnforcementMode
+    disallowedResourceTypes: disallowedResourceTypes
   }
   dependsOn: [level2ManagementGroups]
 }
@@ -121,16 +133,30 @@ module auditResourcesWithoutTags '../../modules/governance/audit-resources-witho
   dependsOn: [level2ManagementGroups]
 }
 
-module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
-  name: 'deploy-storage-access-hardening-initiative'
+// B. Custom Policy Assignments (Scope Enforcement Layer)
+
+module geoComplianceAssignment '../../modules/governance/policy-assignment.bicep' = {
+  name: 'deploy-geo-assignment'
   scope: managementGroup(rootManagementGroupName)
   params: {
-    disallowedResourceTypes: disallowedResourceTypes
+    policyNameSlug: 'geo-guard'
+    policyDefinitionId: geoComplianceInitiative.outputs.initiativeId
+    policyDisplayName: 'Enforce Regional Location Restrictions'
+    policyDescription: 'Enforces regional location restrictions across management group hierarchy'
   }
-  dependsOn: [level2ManagementGroups]
 }
 
-// 2a. Policy Definition & Policy Assignment Layer (Ensures Assignment Resource Exists)
+module taggingAssignment '../../modules/governance/policy-assignment.bicep' = {
+  name: 'deploy-tagging-assignment'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    policyNameSlug: 'tag-guard'
+    policyDefinitionId: taggingInitiative.outputs.initiativeId
+    policyDisplayName: 'Enforce Enterprise Tagging Governance'
+    policyDescription: 'Enforces enterprise tagging governance across management group hierarchy'
+  }
+}
+
 module storageInitiativeAssignment '../../modules/governance/policy-assignment.bicep' = {
   name: 'deploy-storage-hardening-assignment'
   scope: managementGroup(rootManagementGroupName)
@@ -139,6 +165,17 @@ module storageInitiativeAssignment '../../modules/governance/policy-assignment.b
     policyDefinitionId: storageInitiative.outputs.initiativeId
     policyDisplayName: 'Deploy Storage Access Hardening Policy Set'
     policyDescription: 'Enforces storage hardening baselines across management group hierarchy'
+  }
+}
+
+module auditResourcesWithoutTagsAssignment '../../modules/governance/policy-assignment.bicep' = {
+  name: 'deploy-audit-tags-assignment'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    policyNameSlug: 'audit-tags'
+    policyDefinitionId: auditResourcesWithoutTags.outputs.policyDefinitionId
+    policyDisplayName: 'Audit Resources Missing Mandatory Tags'
+    policyDescription: 'Audits all deployed resources that do not satisfy required tag keys'
   }
 }
 
