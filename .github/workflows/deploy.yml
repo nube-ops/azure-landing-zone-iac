@@ -22,6 +22,18 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
+            # Pre-install/version lock Bicep with retry logic to handle transient container network drops
+            RETRY=0
+            UNTIL=3
+            until [ $RETRY -ge $UNTIL ]
+            do
+              az bicep install && break
+              RETRY=$((RETRY+1))
+              echo "Bicep CLI installation failed. Retrying ($RETRY/$UNTIL) in 5s..."
+              sleep 5
+            done
+
+            # Execute validation against static orchestration template
             az bicep build --file environments/prod/main.bicep
             az bicep lint --file environments/prod/main.bicep
 
