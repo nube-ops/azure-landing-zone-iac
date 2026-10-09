@@ -129,6 +129,18 @@ module auditResourcesWithoutTags '../../modules/governance/audit-resources-witho
   dependsOn: [level2ManagementGroups]
 }
 
+// 2B. Policy Assignment Layer (Ensures Assignment Resource Exists)
+module storageInitiativeAssignment '../../modules/governance/policy-assignment.bicep' = {
+  name: 'deploy-storage-hardening-assignment'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    policyNameSlug: 'deploy-storage-access-hardening-initiative'
+    policyDefinitionId: storageInitiative.outputs.initiativeId
+    policyDisplayName: 'Deploy Storage Access Hardening Policy Set'
+    policyDescription: 'Enforces storage hardening baselines across management group hierarchy'
+  }
+}
+
 // ==========================================
 // 3. Data-Driven Policy Exemptions Layer
 // ==========================================
@@ -145,10 +157,10 @@ module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' 
   }
   // Enforce complete dependency barrier against all governance initiatives
   dependsOn: [
+    storageInitiativeAssignment
     geoComplianceInitiative
     taggingInitiative
     securityBenchmarkAssignment
-    storageInitiative
     auditResourcesWithoutTags
   ]
 }]
