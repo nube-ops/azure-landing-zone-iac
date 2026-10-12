@@ -1,66 +1,71 @@
 ### Azure Enterprise-Scale Landing Zone (Bicep & PowerShell Automation)
+* This repository contains a production-grade, enterprise-grade multi-tenant implementation of the Microsoft Cloud Adoption Framework (CAF) Enterprise-Scale Architecture using Azure Bicep, supported by robust PowerShell automation for secure CI/CD bootstrapping.
+* Designed for tenant-level deployments, this codebase automates enterprise governance, management group hierarchies, identity foundations, and subscription associations securely and repeatably.
 
-This repository contains a production-grade, modular Infrastructure as Code (IaC) implementation of the Microsoft Cloud Adoption Framework (CAF) Enterprise-Scale Architecture using Azure Bicep, supported by robust PowerShell automation for secure CI/CD bootstrapping.  
+### Engineering Highlights & Architecture Principles
+* **100% DRY Parameterization:** Tenant hierarchy and subscription mappings are dynamically synthesized from a single `orgName` variable.
+* **Zero-Touch Security:** Eliminates long-lived service principal secrets entirely using GitHub OIDC Federated Credentials (`api://AzureADTokenExchange`).
+* **Idempotent Automation:** PowerShell bootstrap scripts feature state-aware content-hash convergence and zero-write optimizations.
+* **Enterprise Governance:** Implements CAF-aligned management group structures, automated subscription discovery, and policy inheritance out-of-the-box.
+* **Policy-as-Code Governance:** Enforces mandatory security benchmarks, compliance standards, and automated tagging rules directly at the management group root.
 
-Designed for tenant-level deployments, this codebase automates enterprise governance, management group hierarchies, identity foundations, and subscription associations securely and repeatably.
-
-### 🏗️ Architecture Topology
-The deployment establishes a hierarchical Management Group structure rooted at the tenant level, separating platform governance from application landing zones-
+### Architecture Topology
 ```text
 Tenant Root Group 
  ├── mg-contoso-us (Organization Root)
  │    ├── mg-contoso-us-platform
- │    │    ├── mg-contoso-us-connectivity (Subscription)
+ │    │    ├── sub-contoso-us-connectivity (Subscription)
  │    │    │    └── rg-net-hub-prod-cus-01 # Core Hub VNet, Azure Firewall, VPN Gateways
- │    │    ├── mg-contoso-us-identity (Subscription)
+ │    │    ├── sub-contoso-us-identity (Subscription)
  │    │    │    ├── rg-core-identity-cus-01 # Core Domain Controllers & Directory Sync
  │    │    │    └── rg-mgmt-identity-cus-01 # CI/CD Bootstrap, UMI, & OIDC Trust Foundation
- │    │    └── mg-contoso-us-management (Subscription)
+ │    │    └── sub-contoso-us-management (Subscription)
  │    │         └── rg-mgmt-logs-prod-cus-01 # Central Log Analytics, Automation, & Monitor Dashboards
  │    └── mg-contoso-us-landingzones
- │         ├── mg-contoso-us-corp (Subscription)
+ │         ├── sub-contoso-us-corp (Subscription)
  │         │    ├── rg-corp-workloads-prod-cus-01 # Internal Line-of-Business Application Workloads
  │         │    └── rg-corp-data-prod-cus-01 # Backend Databases & Persistent Storage Tiers
- │         └── mg-contoso-us-online (Subscription)
+ │         └── sub-contoso-us-online (Subscription)
  │              ├── rg-online-web-prod-cus-01 # Public-Facing Web Apps & Microservices
  │              └── rg-online-edge-prod-cus-01 # Application Gateways, CDNs, & Front-End Routing
 ```
-### 📁 Repository Structure
+### Repository Structure
 Configuration Management: Fully DRY parameterization allows enterprise deployment naming and hierarchy trees to be dynamically synthesized from a single orgName variable declaration inside main.bicepparam.
 ```text
 azure-landing-zone-iac/
 │
 ├── .github/
-│   └── workflows/              # CI/CD pipelines (Deployment automation)
-├── environments/               # Environment-specific orchestrations
-│   ├── dev/
-│   └── prod/
+│   └── workflows/              # Zero-touch CI/CD pipelines (OIDC authentication & automated deployments)
+├── environments/               # Environment-specific orchestrations (Isolated state & parameterization)
+│   ├── dev/                    # Sandbox/Development tenant configurations
+│   └── prod/                   # Production enterprise tenant configurations
 │       ├── main.bicep          # Tenant-level entry point orchestration
-│       ├── main.bicepparam     # Production parameter file
-│       └── main.bicepparam.example   # Template parameter reference
-├── modules/                    # Reusable, DRY Bicep modules
+│       ├── main.bicepparam     # Production single-source-of-truth parameter file
+│       └── main.bicepparam.example   # Template parameter reference for developers
+├── modules/                    # Reusable, DRY Bicep modules (Decoupled logic from configuration)
 │   ├── governance/             # Compliance, security benchmarks, policies, & tagging
-│   ├── key-vault/              # Key Vault deployment modules
-│   ├── landing-zones/          # Landing zone specific configurations
-│   └── management-groups/      # Reusable management group & subscription association modules
+│   ├── key-vault/              # Modularized Key Vault deployment templates
+│   ├── landing-zones/          # Workload-specific landing zone configurations (Corp/Online)
+│   └── management-groups/      # Reusable management group & subscription association hierarchies
 ├── scripts/
 │   └── bootstrap/
 │       ├── Initialize-SubscriptionSecrets.ps1  # Idempotent sub discovery & parameter sync
-│       └── Initialize-OidcBootstrap.ps1        # Idempotent OIDC & automated secret sync script
+│       └── Initialize-OidcBootstrap.ps1        # Idempotent OIDC, RBAC, & automated secret sync script
 ├── .gitignore
 └── README.md
 ```
 
-### ⚙️ Prerequisites
+### Prerequisites
 Before executing this deployment, ensure you have the following permissions and tools configured:
 
-Permissions:
--Tenant Root Group Owner or User Access Administrator permissions at the Azure AD Tenant root scope (/) to create top-level Management Groups.
+#### **Permissions:**
+* **Tenant Root Scope (`/`):** Owner or User Access Administrator permissions at the Azure AD Tenant root scope to create top-level Management Groups and assign tenant-level RBAC roles.
 
-Tools:
-* Azure CLI (v2.20.0 or higher)
-* GitHub CLI (gh) for automated secret synchronization and developer authentication  
-* Bicep CLI (installed automatically with recent Azure CLI versions)  
+#### **Required Tools & Versions:**
+* **PowerShell 7.0+:** Required for cross-platform automation scripts, modern error handling, and robust hash-convergence logic.
+* **Azure CLI (v2.20.0 or higher):** Core cloud management utility (`az`).
+* **Bicep CLI (v0.20+ or latest):** Installed automatically via Azure CLI (`az bicep install`) for template compilation.
+* **GitHub CLI (`gh` v2.0+):** Required for automated secret synchronization, repository context discovery, and OIDC bootstrapping.
 
 ### 🚀 Deployment Instructions
 To maintain strict adherence to DRY, Idempotency, and Cloud Governance best practices, follow these sequential phases to bootstrap your enterprise landing zone environment.
@@ -71,13 +76,13 @@ To maintain strict adherence to DRY, Idempotency, and Cloud Governance best prac
 ---
 | Workload Domain | Required Naming Keyword | Example Subscription Name |
 | :--- | :--- | :--- |
-| **Connectivity** | `connectivity` | `mg-contoso-us-connectivity` |
-| **Corp Landing Zones** | `corp` | `mg-contoso-us-corp` |
-| **Online Landing Zones** | `online` | `mg-contoso-us-online` |
-| **Identity** | `identity` | `mg-contoso-us-identity` |
-| **Management** | `management` | `mg-contoso-us-management` |
+| **Connectivity** | `connectivity` | `sub-contoso-us-connectivity` |
+| **Corp Landing Zones** | `corp` | `sub-contoso-us-corp` |
+| **Online Landing Zones** | `online` | `sub-contoso-us-online` |
+| **Identity** | `identity` | `sub-contoso-us-identity` |
+| **Management** | `management` | `sub-contoso-us-management` |
 ---
-* **Single Source of Truth (DRY Naming):** Changing `orgName` and `deploymentRegion` at the top of `environments/prod/main.bicepparam` automatically cascades custom naming across all management groups and resource hierarchies. The subscriptionAssociations block at the bottom maps explicit workload domains (such as corp, online, and connectivity), which are then automatically parsed and synchronized with your actual Azure Subscription IDs by the initialization script that .
+* **Single Source of Truth (DRY Naming):** Changing `orgName` and `deploymentRegion` at the top of `environments/prod/main.bicepparam` automatically cascades custom naming across all management groups and resource hierarchies. The subscriptionAssociations block at the bottom maps explicit workload domains (such as corp, online, and connectivity), which are then automatically parsed and synchronized with your actual Azure Subscription IDs by the initialization script in Phase 2.
 
 ### Phase 2: Automated Subscription Discovery & Parameter Synchronization
 * Once your subscriptions are active, authenticate your CLI tools and run the subscription management script from your repository root:
@@ -117,7 +122,7 @@ What Initialize-OidcBootstrap.ps1 Accomplishes:
 ```powershell
 gh workflow run deploy.yml; gh run watch --exit-status; gh run view $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') --log-failed
 ```
-### 🔍 Post-Deployment Verification
+### Post-Deployment Verification
 To empirically verify that your tenant-level orchestration, policy assignments, and subscription associations have successfully converged, execute the following Azure CLI verification commands:
 
 * **Validate Management Group Hierarchy:**
@@ -136,9 +141,9 @@ az policy assignment list --scope "/providers/Microsoft.Management/managementGro
 ```powershell
 az policy exemption show --name "exemption-allow-hub-public-ips" --scope "/subscriptions/11111111-1111-1111-1111-111111111111" --output table
 ```
-🔒 Security & Best Practices
-* Zero Hardcoded Secrets: All environment-specific subscription IDs, client IDs, and names are injected dynamically via parameters or parameter files.
-* Idempotent Automation: PowerShell bootstrap scripts utilize defensive, state-aware checking to ensure safe, repeatable multi-run execution without manual state cleanup.
-* Secure CI/CD Authentication: Avoids long-lived client secrets by leveraging GitHub OIDC Federated Credentials for secure, token-based cloud deployment.
-* Modularization ("Don't Repeat Yourself"): Reusable modules decouple logic from configuration, minimizing code duplication and reducing human error.
-* Least Privilege: Follows CAF guidelines for separating management concerns into dedicated administrative boundaries.
+#### **Security & Best Practices:**
+* **Zero Hardcoded Secrets:** All environment-specific subscription IDs, client IDs, and names are injected dynamically via parameters or parameter files.
+* **Idempotent Automation:** PowerShell bootstrap scripts utilize defensive, state-aware checking to ensure safe, repeatable multi-run execution without manual state cleanup.
+* **Secure CI/CD Authentication:** Avoids long-lived client secrets by leveraging GitHub OIDC Federated Credentials for secure, token-based cloud deployment.
+* **Modularization ("Don't Repeat Yourself"):** Reusable modules decouple logic from configuration, minimizing code duplication and reducing human error.
+* **Least Privilege:** Follows CAF guidelines for separating management concerns into dedicated administrative boundaries.
