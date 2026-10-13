@@ -35,22 +35,32 @@ Configuration Management: Fully DRY parameterization allows enterprise deploymen
 azure-landing-zone-iac/
 │
 ├── .github/
-│   └── workflows/              # Zero-touch CI/CD pipelines (OIDC authentication & automated deployments)
-├── environments/               # Environment-specific orchestrations (Isolated state & parameterization)
-│   ├── dev/                    # Sandbox/Development tenant configurations
-│   └── prod/                   # Production enterprise tenant configurations
-│       ├── main.bicep          # Tenant-level entry point orchestration
-│       ├── main.bicepparam     # Production single-source-of-truth parameter file
-│       └── main.bicepparam.example   # Template parameter reference for developers
-├── modules/                    # Reusable, DRY Bicep modules (Decoupled logic from configuration)
-│   ├── governance/             # Compliance, security benchmarks, policies, & tagging
-│   ├── key-vault/              # Modularized Key Vault deployment templates
-│   ├── landing-zones/          # Workload-specific landing zone configurations (Corp/Online)
-│   └── management-groups/      # Reusable management group & subscription association hierarchies
+│   └── workflows/
+│       └── deploy.yml
+├── environments/
+│   ├── dev/
+│   │   ├── main.bicep
+│   │   ├── main.bicepparam
+│   │   └── main.bicepparam.example
+│   └── prod/
+│       ├── connectivity.bicep
+│       ├── corp.bicep
+│       ├── identity.bicep
+│       ├── main.bicep
+│       ├── main.bicepparam
+│       ├── main.bicepparam.example
+│       ├── management.bicep
+│       └── online.bicep
+├── modules/
+│   ├── governance/
+│   ├── key-vault/
+│   ├── landing-zones/
+│   ├── management-groups/
+│   └── networking/
 ├── scripts/
 │   └── bootstrap/
-│       ├── Initialize-SubscriptionSecrets.ps1  # Idempotent sub discovery & parameter sync
-│       └── Initialize-OidcBootstrap.ps1        # Idempotent OIDC, RBAC, & automated secret sync script
+│       ├── Initialize-SubscriptionSecrets.ps1
+│       └── Initialize-OidcBootstrap.ps1
 ├── .gitignore
 └── README.md
 ```

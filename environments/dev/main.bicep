@@ -9,11 +9,18 @@ targetScope = 'tenant'
 param regionalConfig array
 
 // 2. Management Group Topology & Scoping
-@description('Name of the organizational root management group for policy scoping')
-param rootManagementGroupName string
+@description('Organization name for resource naming')
+param orgName string
+
+@description('Geographical scope prefix for organizational tenant hierarchy (e.g., us, amer, global)')
+param geoPrefix string
 
 @description('Array of management groups defining the organizational hierarchy')
 param managementGroups array
+
+// Dynamic evaluation variables
+var rootMgName = 'mg-${orgName}-${geoPrefix}'
+var rootManagementGroupName = rootMgName
 
 // 3. Governance & Security Policy Inputs
 @description('Mandatory tags to enforce across all child subscriptions')
@@ -40,18 +47,58 @@ param subscriptionAssociations array
 // 1. Data-Driven Management Groups Deployment
 // ==========================================
 
-module managementGroupsModule '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: {
-  name: 'deploy-${mg.name}'
+// 1A. Deploy Root Management Group first
+module rootManagementGroup '../../modules/management-groups/managementGroup.bicep' = {
+  name: 'module-deploy-${rootMgName}'
+  params: {
+    mgName: rootMgName
+    mgDisplayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Organization Root'
+    parentMgId: ''
+  }
+}
+
+// 1B. Deploy Child Management Groups depending explicitly on the Root
+module level1ManagementGroups '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: if (mg.name != rootMgName && mg.parentMgId == '/providers/Microsoft.Management/managementGroups/${rootMgName}') {
+  name: take('deploy-l1-${mg.name}', 64)
   params: {
     mgName: mg.name
     mgDisplayName: mg.displayName
     parentMgId: mg.parentMgId
   }
+  dependsOn: [
+    rootManagementGroup
+  ]
+}]
+
+// 1C. Level 2 Leaf Child Groups (corp, online, connectivity, identity, management)
+module level2ManagementGroups '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: if (mg.name != rootMgName && mg.parentMgId != '/providers/Microsoft.Management/managementGroups/${rootMgName}') {
+  name: take('deploy-l2-${mg.name}', 64)
+  params: {
+    mgName: mg.name
+    mgDisplayName: mg.displayName
+    parentMgId: mg.parentMgId
+  }
+  dependsOn: [
+    level1ManagementGroups
+  ]
 }]
 
 // ==========================================
 // 2. Governance & Compliance Layer 
 // ==========================================
+
+// Built-in Security Baseline Layer
+module securityBenchmarkAssignment '../../modules/governance/cloud-security-benchmark.bicep' = {
+  name: 'deploy-security-benchmark-assignment'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    enforcementMode: securityBenchmarkEnforcementMode
+  }
+  dependsOn: [level2ManagementGroups]
+}
+
+
+// A. Custom Policy Set Definitions (Initiative Layer)
 module geoComplianceInitiative '../../modules/governance/geo-compliance-initiative.bicep' = {
   name: 'deploy-geo-compliance-initiative'
   scope: managementGroup(rootManagementGroupName)
@@ -59,7 +106,7 @@ module geoComplianceInitiative '../../modules/governance/geo-compliance-initiati
     allowedLocations: [for region in regionalConfig: region.location]
     effect: 'Deny'
   }
-  dependsOn: [managementGroupsModule]
+  dependsOn: [level2ManagementGroups]
 }
 
 module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
@@ -68,16 +115,7 @@ module taggingInitiative '../../modules/governance/tagging-initiative.bicep' = {
   params: {
     requiredTags: requiredTags
   }
-  dependsOn: [managementGroupsModule]
-}
-
-module securityBenchmarkAssignment '../../modules/governance/cloud-security-benchmark.bicep' = {
-  name: 'deploy-security-benchmark-assignment'
-  scope: managementGroup(rootManagementGroupName)
-  params: {
-    enforcementMode: securityBenchmarkEnforcementMode
-  }
-  dependsOn: [managementGroupsModule]
+  dependsOn: [level2ManagementGroups]
 }
 
 module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
@@ -86,33 +124,85 @@ module storageInitiative '../../modules/governance/storage-hardening.bicep' = {
   params: {
     disallowedResourceTypes: disallowedResourceTypes
   }
-  dependsOn: [managementGroupsModule]
+  dependsOn: [level2ManagementGroups]
 }
 
 module auditResourcesWithoutTags '../../modules/governance/audit-resources-without-tags.bicep' = {
   name: 'deploy-audit-resources-without-tags'
   scope: managementGroup(rootManagementGroupName)
-  dependsOn: [managementGroupsModule]
+  dependsOn: [level2ManagementGroups]
+}
+
+// B. Custom Policy Assignments (Scope Enforcement Layer)
+
+module geoComplianceAssignment '../../modules/governance/policy-assignment.bicep' = {
+  name: 'deploy-geo-assignment'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    policyNameSlug: 'geo-guard'
+    policyDefinitionId: geoComplianceInitiative.outputs.initiativeId
+    policyDisplayName: 'Enforce Regional Location Restrictions'
+    policyDescription: 'Enforces regional location restrictions across management group hierarchy'
+  }
+}
+
+module taggingAssignment '../../modules/governance/policy-assignment.bicep' = {
+  name: 'deploy-tagging-assignment'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    policyNameSlug: 'tag-guard'
+    policyDefinitionId: taggingInitiative.outputs.initiativeId
+    policyDisplayName: 'Enforce Enterprise Tagging Governance'
+    policyDescription: 'Enforces enterprise tagging governance across management group hierarchy'
+  }
+}
+
+module storageInitiativeAssignment '../../modules/governance/policy-assignment.bicep' = {
+  name: 'deploy-storage-hardening-assignment'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    policyNameSlug: 'stg-guard' // Truncated slug enforces <= 24 character assignment name limit
+    policyDefinitionId: storageInitiative.outputs.initiativeId
+    policyDisplayName: 'Deploy Storage Access Hardening Policy Set'
+    policyDescription: 'Enforces storage hardening baselines across management group hierarchy'
+  }
+}
+
+module auditResourcesWithoutTagsAssignment '../../modules/governance/policy-assignment.bicep' = {
+  name: 'deploy-audit-tags-assignment'
+  scope: managementGroup(rootManagementGroupName)
+  params: {
+    policyNameSlug: 'audit-tags'
+    policyDefinitionId: auditResourcesWithoutTags.outputs.policyDefinitionId
+    policyDisplayName: 'Audit Resources Missing Mandatory Tags'
+    policyDescription: 'Audits all deployed resources that do not satisfy required tag keys'
+  }
 }
 
 // ==========================================
 // 3. Data-Driven Policy Exemptions Layer
 // ==========================================
+// Map target slugs dynamically to assignment outputs
+var assignmentIdMap = {
+  'geo-guard': geoComplianceAssignment.outputs.policyAssignmentId
+  'tag-guard': taggingAssignment.outputs.policyAssignmentId
+  'stg-guard': storageInitiativeAssignment.outputs.policyAssignmentId
+  'audit-tags': auditResourcesWithoutTagsAssignment.outputs.policyAssignmentId
+}
 
 module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' = [for exemption in policyExemptions: {
-  name: 'deploy-${exemption.name}'
+  name: take('deploy-${exemption.name}', 64)
   scope: subscription(exemption.subscriptionId)
   params: {
     exemptionName: exemption.name
     displayName: exemption.displayName
     exemptionDescription: exemption.description
     exemptionCategory: exemption.exemptionCategory
-    policyAssignmentId: exemption.policyAssignmentId
+    // Dynamic lookup driven by parameter slug
+    policyAssignmentId: assignmentIdMap[exemption.targetSlug]
+    // Safely evaluate optional temporal parameter
+    expiresOn: exemption.?expiresOn ?? ''
   }
-  dependsOn: [
-    storageInitiative
-    securityBenchmarkAssignment
-  ]
 }]
 
 // ==========================================
@@ -126,6 +216,16 @@ module subscriptionAssociationsModule '../../modules/management-groups/subscript
     subscriptionIds: assoc.subscriptionIds
   }
   dependsOn: [
-    managementGroupsModule
+    level2ManagementGroups
   ]
 }]
+
+// ==========================================
+// 5. Governance Identity Outputs
+// ==========================================
+
+@description('Principal ID of the System-Assigned Managed Identity assigned to the Tagging Policy')
+output taggingPolicyPrincipalId string = taggingAssignment.outputs.policyAssignmentPrincipalId
+
+@description('Principal ID of the System-Assigned Managed Identity assigned to the Storage Hardening Policy')
+output storagePolicyPrincipalId string = storageInitiativeAssignment.outputs.policyAssignmentPrincipalId
