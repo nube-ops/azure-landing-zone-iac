@@ -43,24 +43,27 @@ azure-landing-zone-iac/
 │   │   ├── main.bicepparam
 │   │   └── main.bicepparam.example
 │   └── prod/
-│       ├── connectivity.bicep
-│       ├── corp.bicep
-│       ├── identity.bicep
-│       ├── main.bicep
-│       ├── main.bicepparam
-│       ├── main.bicepparam.example
-│       ├── management.bicep
-│       └── online.bicep
+│       ├── main.bicep                  # 1. Master Tenant Orchestration Entry Point
+│       ├── main.bicepparam             # 2. Production Single Source of Truth Parameters
+│       ├── main.bicepparam.example     # 3. Parameter Template for Developers
+│       ├── connectivity.bicep          # 4. Subscription Scope: Hub & Networking
+│       ├── corp.bicep                  # 5. Subscription Scope: Internal Workloads
+│       ├── identity.bicep              # 6. Subscription Scope: Identity & Directory Services
+│       ├── management.bicep            # 7. Subscription Scope: Logs & Automation
+│       └── online.bicep                # 8. Subscription Scope: Public Web & Edge Routing
 ├── modules/
-│   ├── governance/
-│   ├── key-vault/
-│   ├── landing-zones/
 │   ├── management-groups/
-│   └── networking/
+│   │   ├── managementGroup.bicep
+│   │   └── subscriptionAssociation.bicep
+│   ├── governance/
+│   ├── resource-groups/
+│   ├── networking/
+│   ├── key-vault/
+│   └── landing-zones/
 ├── scripts/
 │   └── bootstrap/
-│       ├── Initialize-SubscriptionSecrets.ps1
-│       └── Initialize-OidcBootstrap.ps1
+│       ├── Initialize-OidcBootstrap.ps1
+│       └── Initialize-SubscriptionSecrets.ps1
 ├── .gitignore
 └── README.md
 ```
@@ -77,8 +80,21 @@ Before executing this deployment, ensure you have the following permissions and 
 * **Bicep CLI (v0.20+ or latest):** Installed automatically via Azure CLI (`az bicep install`) for template compilation.
 * **GitHub CLI (`gh` v2.0+):** Required for automated secret synchronization, repository context discovery, and OIDC bootstrapping.
 
+#### **Security & Best Practices:**
+* **Zero Hardcoded Secrets:** All environment-specific subscription IDs, client IDs, and names are injected dynamically via parameters or parameter files.
+* **Idempotent Automation:** PowerShell bootstrap scripts utilize defensive, state-aware checking to ensure safe, repeatable multi-run execution without manual state cleanup.
+* **Secure CI/CD Authentication:** Avoids long-lived client secrets by leveraging GitHub OIDC Federated Credentials for secure, token-based cloud deployment.
+* **Modularization ("Don't Repeat Yourself"):** Reusable modules decouple logic from configuration, minimizing code duplication and reducing human error.
+* **Least Privilege:** Follows CAF guidelines for separating management concerns into dedicated administrative boundaries.
+
 ### 🚀 Deployment Instructions
 To maintain strict adherence to DRY, Idempotency, and Cloud Governance best practices, follow these sequential phases to bootstrap your enterprise landing zone environment.
+
+### SECTION 1: Platform Foundation & Governance
+* **Phase 1:** Pre-Provisioning & Subscription Naming Conventions
+* **Phase 2:** Automated Subscription Discovery & Parameter Synchronization (`Initialize-SubscriptionSecrets.ps1`)
+* **Phase 3:** OIDC Bootstrap & Identity Trust Configuration (`Initialize-OidcBootstrap.ps1`)
+* **Phase 4:** Management Group Hierarchy & Policy-as-Code Deployment (`main.bicep`)
 
 ### Phase 1: Pre-Provisioning & Subscription Naming Conventions
 * Prior to running the bootstrap scripts or deployment pipeline, ensure your target enterprise subscriptions are pre-provisioned within your Azure tenant and that the `main.bicepparam` subscription associations align with your Azure subscription names.
@@ -151,9 +167,6 @@ az policy assignment list --scope "/providers/Microsoft.Management/managementGro
 ```powershell
 az policy exemption show --name "exemption-allow-hub-public-ips" --scope "/subscriptions/11111111-1111-1111-1111-111111111111" --output table
 ```
-#### **Security & Best Practices:**
-* **Zero Hardcoded Secrets:** All environment-specific subscription IDs, client IDs, and names are injected dynamically via parameters or parameter files.
-* **Idempotent Automation:** PowerShell bootstrap scripts utilize defensive, state-aware checking to ensure safe, repeatable multi-run execution without manual state cleanup.
-* **Secure CI/CD Authentication:** Avoids long-lived client secrets by leveraging GitHub OIDC Federated Credentials for secure, token-based cloud deployment.
-* **Modularization ("Don't Repeat Yourself"):** Reusable modules decouple logic from configuration, minimizing code duplication and reducing human error.
-* **Least Privilege:** Follows CAF guidelines for separating management concerns into dedicated administrative boundaries.
+
+### Section 2: Core Infrastructure & Connectivity
+* **Phase 5:** Subscription-Scoped Connectivity Hub Deployment (`connectivity.bicep` & `modules/networking/`)
