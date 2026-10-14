@@ -5,7 +5,7 @@ param orgName string
 param environment string
 
 // Reusable module call adhering to DRY and CAF standards
-module connectivityRg '../../modules/networking/resource-group.bicep' = {
+module connectivityRg '../../modules/resource-groups/resourceGroup.bicep' = {
   name: 'deploy-connectivity-rg'
   params: {
     resourceGroupName: 'rg-net-hub-${environment}-${orgName}-01'

@@ -131,7 +131,15 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
+            echo "=== Executing Tenant-Level Governance Deployment ==="
             az deployment tenant create \
               --location ${{ matrix.location }} \
               --template-file environments/${{ matrix.environment }}/main.bicep \
               --parameters environments/${{ matrix.environment }}/main.bicepparam
+
+            echo "=== Executing Subscription-Level Connectivity Deployment ==="
+            az deployment sub create \
+              --location ${{ matrix.location }} \
+              --subscription ${{ secrets.CONNECTIVITY_SUB_ID }} \
+              --template-file environments/${{ matrix.environment }}/connectivity.bicep \
+              --parameters orgName="contoso" environment="${{ matrix.environment }}"
