@@ -141,6 +141,7 @@ What Initialize-OidcBootstrap.ps1 Accomplishes:
 * **Live Visual Verification:** Outputs formatted tabular Azure resource verifications and active repository secret lists upon completion for transparent auditing.
 
 ### Phase 4: Management Group Topology & Deployment Execution
+> **⚠️ Architectural Note on Sequencing:** Phase 3 (`Initialize-OidcBootstrap.ps1`) must be completed prior to executing Phase 4. Once `main.bicep` deploys the `Root-Tagging-Initiative` policy set at the management group root level, any subsequent foundational resource provisioning must strictly adhere to enterprise tag compliance guardrails.
 * **Customizing the Architecture Topology:** If organizational modifications are required, edit the Management Group Hierarchy (Topology Mapping) section and subscription associations inside `environments/prod/main.bicepparam`.
 * **Default Out-of-the-Box Deployment:** If no custom modifications are necessary, the pipeline deploys the enterprise-scale landing zone architecture topology exactly as documented out-of-the-box.
 * **Execution Workflow:** The parameter file feeds directly into the tenant-level Bicep orchestration template (`main.bicep`), driving data-driven creation of management groups, governance policies, and subscription associations.

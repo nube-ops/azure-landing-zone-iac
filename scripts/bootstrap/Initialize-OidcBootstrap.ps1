@@ -79,115 +79,11 @@ param(
     [string]$TenantRootManagementGroupId
 )
 
-$ErrorActionPreference = 'Stop'
+# Dot-source the shared preflight validation library
+. (Join-Path $PSScriptRoot "../common/Test-EnvironmentPreflight.ps1")
 
-# ==========================================
-# Preflight Checks
-# ==========================================
-
-# Create a tracking object for our summary report
-$preflightResults = [PSCustomObject]@{
-    AzureAuthenticated   = $false
-    GitHubAuthenticated  = $false
-    GitHubUserMatched    = $false
-    MatchedUser          = ""
-}
-
-Write-Output "Running pre-flight diagnostics..."
-
-# 1. Check Azure CLI (Fail silently, record status)
-try {
-    $activeAccount = (az account show --query id --output tsv 2>&1)
-    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($activeAccount)) {
-        $preflightResults.AzureAuthenticated =$true
-    }
-} catch {
-    $preflightResults.AzureAuthenticated =$false
-}
-
-# 2. Check GitHub CLI (Fail silently, record status)
-$ghCommand = Get-Command gh -ErrorAction SilentlyContinue
-if ($ghCommand) {
-    try {
-        $null = gh auth status 2>&1
-        if ($LASTEXITCODE -eq 0) {
-            $preflightResults.GitHubAuthenticated = $true
-        }
-    } catch {
-        $preflightResults.GitHubAuthenticated = $false
-    }
-}
-
-# 3. Validate Active GitHub User Matches Repository Owner
-if ($preflightResults.GitHubAuthenticated) {
-    $remoteUrl = (git config --get remote.origin.url 2>$null)
-    if (-not [string]::IsNullOrWhiteSpace($remoteUrl) -and $remoteUrl -match 'github\.com[:/]([^/]+)/([^/.]+)(\.git)?$') {
-        $targetOwner = $Matches[1]
-        try {
-            $rawUserJson = gh api user --jq '.login' 2>$null
-            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($rawUserJson)) {
-                $currentGhUser = $rawUserJson.Trim()
-                if ($currentGhUser -eq $targetOwner) {
-                    $preflightResults.GitHubUserMatched = $true
-                    $preflightResults.MatchedUser = $currentGhUser
-                }
-            }
-        } catch {
-            $preflightResults.GitHubUserMatched = $false
-        }
-    }
-}
-
-Write-Host "`n========================================" -ForegroundColor Cyan
-Write-Host "         PREFLIGHT SUMMARY REPORT       " -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
-
-if ($preflightResults.AzureAuthenticated) {
-    Write-Host "[OK] Azure CLI: Connected" -ForegroundColor Green
-} else {
-    Write-Host "[FAIL] Azure CLI: Not logged in (Run 'az login')" -ForegroundColor Red
-}
-
-if ($preflightResults.GitHubAuthenticated) {
-    Write-Host "[OK] GitHub CLI: Connected" -ForegroundColor Green
-} else {
-    Write-Host "[FAIL] GitHub CLI: Not authenticated (Run 'gh auth login')" -ForegroundColor Red
-}
-
-if ($preflightResults.GitHubUserMatched) {
-    Write-Host "[OK] GitHub User Context: Verified ($($preflightResults.MatchedUser))" -ForegroundColor Green
-} else {
-    Write-Host "[FAIL] GitHub User Context: Logged-in user does not match repository owner" -ForegroundColor Red
-}
-Write-Host "========================================`n" -ForegroundColor Cyan
-
-# Final Gate: Block execution if any preflight check fails
-if (-not $preflightResults.AzureAuthenticated -or -not $preflightResults.GitHubAuthenticated -or -not$preflightResults.GitHubUserMatched) {
-    Write-Host "[ERROR] Preflight failed: Required CLI authentication or repository ownership checks failed." -ForegroundColor Red
-
-    # 1. Detailed GitHub Remediation Guide (Displays if GitHub failed completely)
-    if (-not $preflightResults.GitHubAuthenticated) {
-        Write-Host "`n[REMEDIATION] GitHub CLI Setup Guide:" -ForegroundColor Yellow
-        Write-Host "To configure OIDC federated credentials, run 'gh auth login' and select these options:" -ForegroundColor Cyan
-        Write-Host "  1. Where do you use GitHub? -> GitHub.com" -ForegroundColor Cyan
-        Write-Host "  2. Preferred protocol -> HTTPS" -ForegroundColor Cyan
-        Write-Host "  3. Authenticate Git with your credentials? -> Yes" -ForegroundColor Cyan
-        Write-Host "  4. How would you like to authenticate? -> Login with a web browser" -ForegroundColor Cyan
-        Write-Host "     (Follow the link, enter your one-time device code, authorize, and complete MFA)" -ForegroundColor Cyan
-    }
-
-    # 2. Wrong Account Remediation (Displays if logged into GitHub, but wrong account)
-    if ($preflightResults.GitHubAuthenticated -and -not$preflightResults.GitHubUserMatched) {
-        Write-Host "`n[REMEDIATION] GitHub Account Mismatch:" -ForegroundColor Yellow
-        Write-Host "You are logged into the wrong GitHub account via 'gh'." -ForegroundColor Cyan
-        Write-Host "Run 'gh auth logout' and then re-authenticate with the account that owns this repository." -ForegroundColor Cyan
-    }
-
-    Write-Host "`nExecute this script again after completing authentication." -ForegroundColor Yellow
-    throw "Bootstrap aborted due to missing authentication prerequisites."
-}
-
-Write-Host "[SUCCESS] All critical preflight checks passed. Proceeding..." -ForegroundColor Green
+# Execute preflight validation
+Test-EnvironmentPreflight
 
 # =========================================================================
 # Dynamic Primary Region & Configuration Auto-Resolution (DRY Pattern)
@@ -207,10 +103,10 @@ if (([string]::IsNullOrWhiteSpace($Location) -or [string]::IsNullOrWhiteSpace($R
             $extractedRegionCode = $Matches[2]
 
             # Parse DRY orgName and deploymentRegion from the top of main.bicepparam
-            if ($bicepParamContent -match "var\s+orgName\s*=\s*'([^']+)'") {
+            if ($bicepParamContent -match "param\s+orgName\s*=\s*'([^']+)'") {
                 $script:ParsedOrgName = $Matches[1]
             }
-            if ($bicepParamContent -match "var\s+deploymentRegion\s*=\s*'([^']+)'") {
+            if ($bicepParamContent -match "param\s+geoPrefix\s*=\s*'([^']+)'") {
                 $script:ParsedDeploymentRegion = $Matches[1]
             }
 
@@ -250,6 +146,24 @@ if ([string]::IsNullOrWhiteSpace($Location) -or [string]::IsNullOrWhiteSpace($Re
 # ==========================================
 # Resolved Configuration Audit Output
 # ==========================================
+if ([string]::IsNullOrWhiteSpace($script:ParsedOrgName) -or 
+    [string]::IsNullOrWhiteSpace($script:ParsedDeploymentRegion) -or 
+    [string]::IsNullOrWhiteSpace($Location) -or 
+    [string]::IsNullOrWhiteSpace($ResourceGroupName) -or 
+    [string]::IsNullOrWhiteSpace($IdentityName) -or 
+    [string]::IsNullOrWhiteSpace($BootstrapSubscriptionId)) {
+    
+    Write-Host "`n[ERROR] CRITICAL: One or more required bootstrap configuration fields are empty." -ForegroundColor Red
+    Write-Host "  - Organization Name     : $script:ParsedOrgName" -ForegroundColor Yellow
+    Write-Host "  - Deployment Region     : $script:ParsedDeploymentRegion" -ForegroundColor Yellow
+    Write-Host "  - Primary Location      : $Location" -ForegroundColor Yellow
+    Write-Host "  - Resource Group        : $ResourceGroupName" -ForegroundColor Yellow
+    Write-Host "  - Managed Identity      : $IdentityName" -ForegroundColor Yellow
+    Write-Host "  - Bootstrap Sub ID      : $BootstrapSubscriptionId" -ForegroundColor Yellow
+    
+    throw "Bootstrap aborted: Unresolved configuration parameters. Verify your bicepparam schema."
+}
+
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "      RESOLVED BOOTSTRAP CONFIGURATION   " -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
