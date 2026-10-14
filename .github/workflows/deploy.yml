@@ -49,9 +49,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - environment: dev
-            location: centralus
-            mode: what-if
+          # NOTE: Dev environment temporarily disabled to conserve Pay-As-You-Go subscription limits.
+          # To re-enable dev validation/what-if runs, uncomment the lines below:
+          #- environment: dev
+          #  location: centralus
+          #  mode: what-if
           - environment: prod
             location: centralus
             mode: deploy
