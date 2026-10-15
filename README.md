@@ -61,9 +61,13 @@ azure-landing-zone-iac/
 │   ├── key-vault/
 │   └── landing-zones/
 ├── scripts/
-│   └── bootstrap/
-│       ├── Initialize-OidcBootstrap.ps1
-│       └── Initialize-SubscriptionSecrets.ps1
+│   ├── bootstrap/
+│   │   ├── Initialize-OidcBootstrap.ps1
+│   │   ├── Initialize-PlatformIdentity.ps1
+│   │   └── Initialize-SubscriptionSecrets.ps1
+│   └── common/
+│       ├── Test-EnvironmentPreflight.ps1
+│       └── Invoke-WithRetry.ps1
 ├── .gitignore
 └── README.md
 ```

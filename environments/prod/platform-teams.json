@@ -1,0 +1,12 @@
+{
+  "platformTeams": [
+    {
+      "name": "Networking",
+      "slug": "net-platform",
+      "mailNickname": "net-platform-admins",
+      "roleName": "Network Contributor",
+      "targetSubscriptionWorkload": "connectivity",
+      "costCenter": "CC-1000"
+    }
+  ]
+}

@@ -81,6 +81,7 @@ param(
 
 # Dot-source the shared preflight validation library
 . (Join-Path $PSScriptRoot "../common/Test-EnvironmentPreflight.ps1")
+. (Join-Path $PSScriptRoot "../common/Invoke-WithRetry.ps1")
 
 # Execute preflight validation
 Test-EnvironmentPreflight
