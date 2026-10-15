@@ -140,8 +140,12 @@ jobs:
               --parameters environments/${{ matrix.environment }}/main.bicepparam
 
             echo "=== Executing Subscription-Level Connectivity Deployment ==="
+            # Dynamically extract networking team metadata from JSON or pass environment context
+            NET_OWNER="Platform-Networking-Team"
+            NET_COST_CENTER="cc-1000"
+
             az deployment sub create \
               --location ${{ matrix.location }} \
               --subscription ${{ secrets.CONNECTIVITY_SUB_ID }} \
               --template-file environments/${{ matrix.environment }}/connectivity.bicep \
-              --parameters orgName="contoso" environment="${{ matrix.environment }}"
+              --parameters orgName="contoso" environment="${{ matrix.environment }}" owner="$NET_OWNER" costCenter="$NET_COST_CENTER"

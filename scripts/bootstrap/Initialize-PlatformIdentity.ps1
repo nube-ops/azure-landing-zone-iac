@@ -93,18 +93,18 @@ foreach ($team in $config.platformTeams) {
     } else {
         Write-Host "Role '$roleName' is already assigned at this scope. Skipping." -ForegroundColor Green
     }
+
+    # ==========================================
+    # Visual Terminal Verification Phase (Inside Loop)
+    # ==========================================
+    Write-Host "`nVerifying Deployed Identity & RBAC Configuration for $($team.name)..." -ForegroundColor Cyan
+
+    Write-Host "[SUCCESS] Entra ID Security Group '$groupName' is ready." -ForegroundColor Green
+    az ad group show --group $groupName --output table
+    Write-Host ""
+
+    Write-Host "[SUCCESS] Subscription-Scope RBAC Assignment is active." -ForegroundColor Green
+    az role assignment list --assignee $groupId --scope $scope --output table
+
+    Write-Host "[SUCCESS] Platform team '$($team.name)' identity and RBAC converged successfully." -ForegroundColor Green
 }
-
-# ==========================================
-# Visual Terminal Verification Phase
-# ==========================================
-Write-Host "`nVerifying Deployed Identity & RBAC Configuration for $($team.name)..." -ForegroundColor Cyan
-
-Write-Host "[SUCCESS] Entra ID Security Group '$groupName' is ready." -ForegroundColor Green
-az ad group show --group $groupName --output table
-Write-Host ""
-
-Write-Host "[SUCCESS] Subscription-Scope RBAC Assignment is active." -ForegroundColor Green
-az role assignment list --assignee $groupId --scope $scope --output table
-
-Write-Host "[SUCCESS] Platform team identity and RBAC converged successfully. Control-plane resources delegated to Bicep." -ForegroundColor Green

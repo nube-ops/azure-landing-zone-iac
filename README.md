@@ -12,22 +12,27 @@
 ### Architecture Topology
 ```text
 Tenant Root Group 
- ├── mg-contoso-us (Organization Root)
- │    ├── mg-contoso-us-platform
- │    │    ├── sub-contoso-us-connectivity (Subscription)
- │    │    │    └── rg-net-hub-prod-cus-01 # Core Hub VNet, Azure Firewall, VPN Gateways
- │    │    ├── sub-contoso-us-identity (Subscription)
- │    │    │    ├── rg-core-identity-cus-01 # Core Domain Controllers & Directory Sync
- │    │    │    └── rg-mgmt-identity-cus-01 # CI/CD Bootstrap, UMI, & OIDC Trust Foundation
- │    │    └── sub-contoso-us-management (Subscription)
- │    │         └── rg-mgmt-logs-prod-cus-01 # Central Log Analytics, Automation, & Monitor Dashboards
- │    └── mg-contoso-us-landingzones
- │         ├── sub-contoso-us-corp (Subscription)
- │         │    ├── rg-corp-workloads-prod-cus-01 # Internal Line-of-Business Application Workloads
- │         │    └── rg-corp-data-prod-cus-01 # Backend Databases & Persistent Storage Tiers
- │         └── sub-contoso-us-online (Subscription)
- │              ├── rg-online-web-prod-cus-01 # Public-Facing Web Apps & Microservices
- │              └── rg-online-edge-prod-cus-01 # Application Gateways, CDNs, & Front-End Routing
+├── mg-contoso-us (Organization Root)
+│   ├─ mg-contoso-us-platform
+│   │  ├─ mg-contoso-us-connectivity
+│   │  │  └─ sub-contoso-us-connectivity (Subscription)
+│   │  │     └─ rg-net-hub-prod-cus-01 # Core Hub VNet, Azure Firewall, VPN Gateways
+│   │  ├─ mg-contoso-us-identity
+│   │  │  └─ sub-contoso-us-identity (Subscription)
+│   │  │     ├─ rg-core-identity-cus-01 # Core Domain Controllers & Directory Sync
+│   │  │     └─ rg-mgmt-identity-cus-01 # CI/CD Bootstrap, UMI, & OIDC Trust Foundation
+│   │  └─ mg-contoso-us-operations
+│   │     └─ sub-contoso-us-operations (Subscription)
+│   │        └─ rg-mgmt-logs-prod-cus-01 # Central Log Analytics, Automation, & Monitor Dashboards
+│   └─ mg-contoso-us-landingzones
+│      ├─ mg-contoso-us-corp
+│      │  └─ sub-contoso-us-corp (Subscription)
+│      │     ├─ rg-corp-workloads-prod-cus-01 # Internal Line-of-Business Application Workloads
+│      │     └─ rg-corp-data-prod-cus-01 # Backend Databases & Persistent Storage Tiers
+│      └─ mg-contoso-us-online
+│         └─ sub-contoso-us-online (Subscription)
+│            ├─ rg-online-web-prod-cus-01 # Public-Facing Web Apps & Microservices
+│            └─ rg-online-edge-prod-cus-01 # Application Gateways, CDNs, & Front-End Routing
 ```
 ### Repository Structure
 Configuration Management: Fully DRY parameterization allows enterprise deployment naming and hierarchy trees to be dynamically synthesized from a single orgName variable declaration inside main.bicepparam.

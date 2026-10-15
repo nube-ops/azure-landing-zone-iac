@@ -7,6 +7,14 @@
       "roleName": "Network Contributor",
       "targetSubscriptionWorkload": "connectivity",
       "costCenter": "CC-1000"
+    },
+    {
+      "name": "Cloud Operations",
+      "slug": "ops-platform",
+      "mailNickname": "ops-platform-admins",
+      "roleName": "Monitoring Contributor",
+      "targetSubscriptionWorkload": "operations",
+      "costCenter": "CC-2000"
     }
   ]
 }
