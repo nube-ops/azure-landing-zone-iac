@@ -59,7 +59,12 @@ foreach ($team in $config.platformTeams) {
     Write-Host "Checking for existing Entra ID Security Group '$groupName'..." -ForegroundColor Cyan
 
     $existingGroupId = Invoke-WithRetry -MaxRetries 3 -DelaySeconds 5 -ErrorMessage "Failed to query Entra ID group '$groupName'." -ScriptBlock {
-        ([string](az ad group list --display-name $groupName --query "[0].id" -o tsv 2>$null)).Trim()
+        $result = az ad group list --display-name $groupName --query "[0].id" -o tsv 2>$null
+        if (-not [string]::IsNullOrWhiteSpace($result)) {
+            $result.Trim()
+        } else {
+            $null
+        }
     }
 
     if ([string]::IsNullOrWhiteSpace($existingGroupId)) {
