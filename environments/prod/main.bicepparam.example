@@ -82,7 +82,7 @@ param managementGroups = [
   }
   {
     name: '${rootMgName}-management'
-    displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Management'
+    displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Operations'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-platform'
   }
 ]
@@ -147,9 +147,9 @@ param subscriptionAssociations = [
     ]
   }
   {
-    mgName: '${rootMgName}-management'
+    mgName: '${rootMgName}-operations'
     subscriptionIds: [
-      '55555555-5555-5555-5555-555555555555' // Placeholder: Replace with actual Management subscription ID
+      '55555555-5555-5555-5555-555555555555' // Placeholder: Replace with actual Operations subscription ID
     ]
   }
 ]

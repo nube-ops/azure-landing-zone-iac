@@ -86,8 +86,14 @@ foreach ($team in $config.platformTeams) {
     }
 
     if ([string]::IsNullOrWhiteSpace($existingRole)) {
+        # If the group was just created in this run, add a short propagation buffer for Entra ID replication
+        if ([string]::IsNullOrWhiteSpace($existingGroupId)) {
+            Write-Host "New security group detected. Waiting 10 seconds for Entra ID global replication..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 10
+        }
+
         Write-Host "Assigning '$roleName' role to subscription scope..." -ForegroundColor Cyan
-        Invoke-WithRetry -MaxRetries 3 -DelaySeconds 5 -ErrorMessage "Failed to assign '$roleName' role." -ScriptBlock {
+        Invoke-WithRetry -MaxRetries 5 -DelaySeconds 10 -ErrorMessage "Failed to assign '$roleName' role due to replication delay." -ScriptBlock {
             az role assignment create --role $roleName --assignee-object-id $groupId --assignee-principal-type Group --scope $scope --output none
         }
     } else {

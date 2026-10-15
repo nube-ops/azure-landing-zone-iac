@@ -15,6 +15,14 @@
       "roleName": "Monitoring Contributor",
       "targetSubscriptionWorkload": "operations",
       "costCenter": "CC-2000"
+    },
+    {
+      "name": "Identity Core",
+      "slug": "id-platform",
+      "mailNickname": "id-platform-admins",
+      "roleName": "Contributor",
+      "targetSubscriptionWorkload": "identity",
+      "costCenter": "CC-3000"
     }
   ]
 }
