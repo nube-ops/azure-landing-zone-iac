@@ -140,9 +140,13 @@ jobs:
               --parameters environments/${{ matrix.environment }}/main.bicepparam
 
             echo "=== Executing Subscription-Level Connectivity Deployment ==="
-            # Dynamically extract networking team metadata from JSON or pass environment context
-            NET_OWNER="Platform-Networking-Team"
-            NET_COST_CENTER="cc-1000"
+            
+            # Dynamically query platform-teams.json for the networking team metadata
+            CONFIG_FILE="environments/${{ matrix.environment }}/platform-teams.json"
+            NET_OWNER=$(jq -r '.platformTeams[] | select(.targetSubscriptionWorkload == "connectivity") | .name' "$CONFIG_FILE")
+            NET_COST_CENTER=$(jq -r '.platformTeams[] | select(.targetSubscriptionWorkload == "connectivity") | .costCenter' "$CONFIG_FILE")
+
+            echo "Extracted from JSON -> Owner: $NET_OWNER, CostCenter: $NET_COST_CENTER"
 
             az deployment sub create \
               --location ${{ matrix.location }} \
