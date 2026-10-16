@@ -55,7 +55,8 @@ azure-landing-zone-iac/
 │       ├── corp.bicep                  # 5. Subscription Scope: Internal Workloads
 │       ├── identity.bicep              # 6. Subscription Scope: Identity & Directory Services
 │       ├── management.bicep            # 7. Subscription Scope: Logs & Automation
-│       └── online.bicep                # 8. Subscription Scope: Public Web & Edge Routing
+│       ├── online.bicep                # 8. Subscription Scope: Public Web & Edge Routing
+│       └── platform-teams.json         # 9. Single source of truth for identity and metadata
 ├── modules/
 │   ├── management-groups/
 │   │   ├── managementGroup.bicep
