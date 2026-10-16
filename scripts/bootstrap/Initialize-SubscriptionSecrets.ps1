@@ -15,7 +15,7 @@
       - Resilient Transient Error Handling: Implements a reusable retry wrapper helper function 
         (`Invoke-WithRetry`) with exponential/delay buffers to handle cloud API network blips gracefully.
       - Tenant Subscription Mapping: Queries active enterprise Azure subscriptions, filtering dynamically 
-        across core workload domains (connectivity, corp, online, identity, management) and validating enabled states.
+        across core workload domains (connectivity, corp, online, identity, operations) and validating enabled states.
       - Idempotent Bicepparam Auto-Population (DRY Architecture): Programmatically parses and injects 
         discovered subscription IDs directly into target arrays within 'main.bicepparam' without manual toil.
       - Content-Hash Convergence & Zero-Write Optimization: Evaluates existing file contents before writing, 
@@ -139,7 +139,7 @@ $azureSubs | Format-Table -AutoSize
 Write-Host "========================================`n" -ForegroundColor Cyan
 
 # Define the target workload domains
-$workloadTypes = @('connectivity', 'corp', 'online', 'identity', 'management')
+$workloadTypes = @('connectivity', 'corp', 'online', 'identity', 'operations')
 $secretMapping = @{}
 
 foreach ($type in $workloadTypes) {
@@ -181,7 +181,7 @@ if (Test-Path $bicepParamPath) {
             'ONLINE_SUB_ID'       { $paramContent =$paramContent -replace '(?s)(mgName:\s*''\$\{rootMgName\}-online''\s*subscriptionIds:\s*\[)[^\]]*(\s*\])', "`$1`n      '$subId'`$2" }
             'CONNECTIVITY_SUB_ID' { $paramContent = $paramContent -replace '(?s)(mgName:\s*''\$\{rootMgName\}-connectivity''\s*subscriptionIds:\s*\[)[^\]]*(\s*\])', "`$1`n      '$subId'`$2" }
             'IDENTITY_SUB_ID'     { $paramContent =$paramContent -replace '(?s)(mgName:\s*''\$\{rootMgName\}-identity''\s*subscriptionIds:\s*\[)[^\]]*(\s*\])', "`$1`n      '$subId'`$2" }
-            'MANAGEMENT_SUB_ID'   { $paramContent = $paramContent -replace '(?s)(mgName:\s*''\$\{rootMgName\}-management''\s*subscriptionIds:\s*\[)[^\]]*(\s*\])', "`$1`n      '$subId'`$2" }
+            'OPERATIONS_SUB_ID'   { $paramContent = $paramContent -replace '(?s)(mgName:\s*''\$\{rootMgName\}-operations''\s*subscriptionIds:\s*\[)[^\]]*(\s*\])', "`$1`n      '$subId'`$2" }
         }
     }
 
