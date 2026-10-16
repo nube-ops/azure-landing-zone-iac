@@ -81,7 +81,7 @@ param managementGroups = [
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-platform'
   }
   {
-    name: '${rootMgName}-management'
+    name: '${rootMgName}-operations'
     displayName: '${toUpper(orgName)} ${toUpper(geoPrefix)} Operations'
     parentMgId: '/providers/Microsoft.Management/managementGroups/${rootMgName}-platform'
   }
