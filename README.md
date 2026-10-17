@@ -69,9 +69,10 @@ azure-landing-zone-iac/
 │   └── landing-zones/
 ├── scripts/
 │   ├── bootstrap/
-│   │   ├── Initialize-OidcBootstrap.ps1
-│   │   ├── Initialize-PlatformIdentity.ps1
-│   │   └── Initialize-SubscriptionSecrets.ps1
+│   │   ├── Initialize-TenantOidc.ps1       <-- Handles Tenant Root & Management Group UMI/OIDC
+│   │   ├── Initialize-SubscriptionSecrets.ps1 <-- Synchronizes IDs to GitHub Secrets
+│   │   ├── Initialize-ResourceIdentity.ps1    <-- Handles Subscription-Scoped Workload UMI & RBAC
+│   │   ├── Initialize-PlatformIdentity.ps1    <-- Handles Core Identity Foundations
 │   └── common/
 │       ├── Test-EnvironmentPreflight.ps1
 │       └── Invoke-WithRetry.ps1
@@ -104,7 +105,7 @@ To maintain strict adherence to DRY, Idempotency, and Cloud Governance best prac
 ### SECTION 1: Platform Foundation & Governance
 * **Phase 1:** Pre-Provisioning & Subscription Naming Conventions
 * **Phase 2:** Automated Subscription Discovery & Parameter Synchronization (`Initialize-SubscriptionSecrets.ps1`)
-* **Phase 3:** OIDC Bootstrap & Identity Trust Configuration (`Initialize-OidcBootstrap.ps1`)
+* **Phase 3:** OIDC Bootstrap & Identity Trust Configuration (`Initialize-TenantOidc.ps1`)
 * **Phase 4:** Management Group Hierarchy & Policy-as-Code Deployment (`main.bicep`)
 
 ### Phase 1: Pre-Provisioning & Subscription Naming Conventions
@@ -139,9 +140,9 @@ What Initialize-SubscriptionSecrets.ps1 Accomplishes:
 * Designate your primary deployment location with `isPrimary: true` in your environment parameters file (`environments/prod/main.bicepparam`), while aligning your secondary region with its Azure-paired region for high availability (HA), disaster recovery (DR) readiness, and automated cross-region policy compliance.
 * Execute the zero-touch, highly secure, and idempotent bootstrap script locally from your repository root:
 ```powershell
-.\scripts\bootstrap\Initialize-OidcBootstrap.ps1
+.\scripts\bootstrap\Initialize-TenantOidc.ps1
 ```
-What Initialize-OidcBootstrap.ps1 Accomplishes:
+What Initialize-TenantOidc.ps1 Accomplishes:
 * **Dynamic Bicepparam Integration (DRY Architecture):** Programmatically reads your environment's parameter file (`environments/prod/main.bicepparam`), isolating the configuration block where `isPrimary: true` is declared to automatically derive target regions and resource naming conventions (such as location and region codes) without hardcoded duplication.
 * **Automated Preflight Diagnostics:** Validates active Azure CLI (`az`) and GitHub CLI (`gh`) sessions upfront, failing fast with precise remediation instructions if missing.
 * **Intelligent Context Auto-Discovery:** Dynamically detects your active Azure Subscription ID, Tenant ID, and local Git remote metadata (Owner/Repository) with a graceful fallback safety net.
@@ -152,7 +153,7 @@ What Initialize-OidcBootstrap.ps1 Accomplishes:
 * **Live Visual Verification:** Outputs formatted tabular Azure resource verifications and active repository secret lists upon completion for transparent auditing.
 
 ### Phase 4: Management Group Topology & Deployment Execution
-> **⚠️ Architectural Note on Sequencing:** Phase 3 (`Initialize-OidcBootstrap.ps1`) must be completed prior to executing Phase 4. Once `main.bicep` deploys the `Root-Tagging-Initiative` policy set at the management group root level, any subsequent foundational resource provisioning must strictly adhere to enterprise tag compliance guardrails.
+> **⚠️ Architectural Note on Sequencing:** Phase 3 (`Initialize-TenantOidc.ps1`) must be completed prior to executing Phase 4. Once `main.bicep` deploys the `Root-Tagging-Initiative` policy set at the management group root level, any subsequent foundational resource provisioning must strictly adhere to enterprise tag compliance guardrails.
 * **Customizing the Architecture Topology:** If organizational modifications are required, edit the Management Group Hierarchy (Topology Mapping) section and subscription associations inside `environments/prod/main.bicepparam`.
 * **Default Out-of-the-Box Deployment:** If no custom modifications are necessary, the pipeline deploys the enterprise-scale landing zone architecture topology exactly as documented out-of-the-box.
 * **Execution Workflow:** The parameter file feeds directly into the tenant-level Bicep orchestration template (`main.bicep`), driving data-driven creation of management groups, governance policies, and subscription associations.

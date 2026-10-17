@@ -53,11 +53,11 @@
 
 .EXAMPLE
     # Run with fully automated local context discovery:
-    .\Initialize-OidcBootstrap.ps1
+    .\Initialize-TenantOidc.ps1
 
 .EXAMPLE
     # Or run with explicit parameters:
-    .\Initialize-OidcBootstrap.ps1 `
+    .\Initialize-TenantOidc.ps1 `
         -BootstrapSubscriptionId "11111111-2222-3333-4444-555565555555" `
         -ResourceGroupName "rg-mgmt-identity-cus-01" `
         -Location "centralus" `
@@ -294,7 +294,7 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
 # Only show the warning and instructions if the user is NOT logged in
 if (-not $isLoggedIn) {
     Write-Host "`n[WARNING] GitHub CLI is not authenticated." -ForegroundColor Red
-    Write-Host "If 'gh' is not installed, review the script description (Get-Help .\Initialize-OidcBootstrap.ps1) for installation steps." -ForegroundColor Yellow
+    Write-Host "If 'gh' is not installed, review the script description (Get-Help .\Initialize-TenantOidc.ps1) for installation steps." -ForegroundColor Yellow
     Write-Host "To configure OIDC federated credentials and allow automatic secret syncing, run 'gh auth login' using the following options:" -ForegroundColor Cyan
     Write-Host "  1. Where do you use GitHub? -> GitHub.com" -ForegroundColor Cyan
     Write-Host "  2. Preferred protocol -> HTTPS" -ForegroundColor Cyan
