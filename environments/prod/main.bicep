@@ -44,7 +44,7 @@ param policyExemptions array = []
 param subscriptionAssociations array
 
 // ==========================================
-// 1. Data-Driven Management Groups Deployment
+// Phase 1: Data-Driven Management Groups Deployment
 // ==========================================
 
 // 1A. Deploy Root Management Group first
@@ -84,10 +84,12 @@ module level2ManagementGroups '../../modules/management-groups/managementGroup.b
 }]
 
 // ==========================================
-// 2. Governance & Compliance Layer 
+// Phase 2: Governance & Compliance Layer
 // ==========================================
 
-// Built-in Security Baseline Layer
+// A. Built-in Security Baseline Layer
+// ==========================================
+
 module securityBenchmarkAssignment '../../modules/governance/cloud-security-benchmark.bicep' = {
   name: 'deploy-security-benchmark-assignment'
   scope: managementGroup(rootManagementGroupName)
@@ -98,7 +100,9 @@ module securityBenchmarkAssignment '../../modules/governance/cloud-security-benc
 }
 
 
-// A. Custom Policy Set Definitions (Initiative Layer)
+// B. Custom Policy Set Definitions (Initiative Layer)
+// ==========================================
+
 module geoComplianceInitiative '../../modules/governance/geo-compliance-initiative.bicep' = {
   name: 'deploy-geo-compliance-initiative'
   scope: managementGroup(rootManagementGroupName)
@@ -133,7 +137,8 @@ module auditResourcesWithoutTags '../../modules/governance/audit-resources-witho
   dependsOn: [level2ManagementGroups]
 }
 
-// B. Custom Policy Assignments (Scope Enforcement Layer)
+// C. Custom Policy Assignments (Scope Enforcement Layer)
+// ==========================================
 
 module geoComplianceAssignment '../../modules/governance/policy-assignment.bicep' = {
   name: 'deploy-geo-assignment'
@@ -179,8 +184,7 @@ module auditResourcesWithoutTagsAssignment '../../modules/governance/policy-assi
   }
 }
 
-// ==========================================
-// 3. Data-Driven Policy Exemptions Layer
+// D. Data-Driven Policy Exemptions Layer
 // ==========================================
 // Map target slugs dynamically to assignment outputs
 var assignmentIdMap = {
@@ -205,8 +209,22 @@ module policyExemptionsModule '../../modules/governance/policy-exemption.bicep' 
   }
 }]
 
+// E. Governance Identity Outputs
 // ==========================================
-// 4. Subscription Workload Associations
+@description('Principal ID of the System-Assigned Managed Identity assigned to the Geo-Compliance Policy')
+output geoCompliancePolicyPrincipalId string = geoComplianceAssignment.outputs.policyAssignmentPrincipalId
+
+@description('Principal ID of the System-Assigned Managed Identity assigned to the Tagging Policy')
+output taggingPolicyPrincipalId string = taggingAssignment.outputs.policyAssignmentPrincipalId
+
+@description('Principal ID of the System-Assigned Managed Identity assigned to the Storage Hardening Policy')
+output storagePolicyPrincipalId string = storageInitiativeAssignment.outputs.policyAssignmentPrincipalId
+
+@description('Principal ID of the System-Assigned Managed Identity assigned to the Audit Tags Policy')
+output auditTagsPolicyPrincipalId string = auditResourcesWithoutTagsAssignment.outputs.policyAssignmentPrincipalId
+
+// ==========================================
+// Phase 3: Subscription Workload Associations
 // ==========================================
 
 module subscriptionAssociationsModule '../../modules/management-groups/subscriptionAssociation.bicep' = [for assoc in subscriptionAssociations: if (!empty(assoc.subscriptionIds)) {
@@ -219,13 +237,3 @@ module subscriptionAssociationsModule '../../modules/management-groups/subscript
     level2ManagementGroups
   ]
 }]
-
-// ==========================================
-// 5. Governance Identity Outputs
-// ==========================================
-
-@description('Principal ID of the System-Assigned Managed Identity assigned to the Tagging Policy')
-output taggingPolicyPrincipalId string = taggingAssignment.outputs.policyAssignmentPrincipalId
-
-@description('Principal ID of the System-Assigned Managed Identity assigned to the Storage Hardening Policy')
-output storagePolicyPrincipalId string = storageInitiativeAssignment.outputs.policyAssignmentPrincipalId

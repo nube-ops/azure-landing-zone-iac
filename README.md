@@ -41,22 +41,23 @@ azure-landing-zone-iac/
 │
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml
+│       ├── deploy-foundation.yml   <-- Handles MGs, Policies & Governance, and Sub association
+│       └── deploy-resources.yml    <-- Handles subscription-scoped VNets, NSGs, and workload RGs
 ├── environments/
 │   ├── dev/
 │   │   ├── main.bicep
 │   │   ├── main.bicepparam
 │   │   └── main.bicepparam.example
 │   └── prod/
-│       ├── main.bicep                  # 1. Master Tenant Orchestration Entry Point
-│       ├── main.bicepparam             # 2. Production Single Source of Truth Parameters
-│       ├── main.bicepparam.example     # 3. Parameter Template for Developers
-│       ├── connectivity.bicep          # 4. Subscription Scope: Hub & Networking
-│       ├── corp.bicep                  # 5. Subscription Scope: Internal Workloads
-│       ├── identity.bicep              # 6. Subscription Scope: Identity & Directory Services
-│       ├── management.bicep            # 7. Subscription Scope: Logs & Automation
-│       ├── online.bicep                # 8. Subscription Scope: Public Web & Edge Routing
-│       └── platform-teams.json         # 9. Single source of truth for identity and metadata
+│       ├── main.bicep              <-- Master Tenant Orchestration Entry Point
+│       ├── main.bicepparam         <-- Production Single Source of Truth Parameters
+│       ├── main.bicepparam.example <-- Parameter Template for Developers
+│       ├── connectivity.bicep      <-- Subscription Scope: Hub & Networking
+│       ├── corp.bicep              <-- Subscription Scope: Internal Workloads
+│       ├── identity.bicep          <-- Subscription Scope: Identity & Directory Services
+│       ├── operations.bicep        <-- Subscription Scope: Logs & Automation
+│       ├── online.bicep            <-- Subscription Scope: Public Web & Edge Routing
+│       └── platform-teams.json     <-- Single source of truth for identity and metadata
 ├── modules/
 │   ├── management-groups/
 │   │   ├── managementGroup.bicep
