@@ -71,8 +71,8 @@ azure-landing-zone-iac/
 │   ├── bootstrap/
 │   │   ├── Initialize-TenantOidc.ps1       <-- Handles Tenant Root & Management Group UMI/OIDC
 │   │   ├── Initialize-SubscriptionSecrets.ps1 <-- Synchronizes IDs to GitHub Secrets
-│   │   ├── Initialize-ResourceIdentity.ps1    <-- Handles Subscription-Scoped Workload UMI & RBAC
-│   │   ├── Initialize-PlatformIdentity.ps1    <-- Handles Core Identity Foundations
+│   │   ├── Initialize-SubscriptionOidc.ps1    <-- Handles Subscription-Scoped Workload UMI & RBAC
+│   │   ├── Initialize-PlatformTeams.ps1    <-- Handles Core Identity Foundations
 │   └── common/
 │       ├── Test-EnvironmentPreflight.ps1
 │       └── Invoke-WithRetry.ps1
