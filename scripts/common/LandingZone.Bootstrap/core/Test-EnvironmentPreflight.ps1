@@ -123,7 +123,7 @@ function Test-EnvironmentPreflight {
     }
     Write-Host "========================================`n" -ForegroundColor Cyan
 
-    # Final Gate: Block execution if any preflight check fails[cite: 10]
+    # Final Gate: Block execution if any preflight check fails
     if (-not $preflightResults.AzureAuthenticated -or -not $preflightResults.GitHubAuthenticated -or -not $preflightResults.GitHubUserMatched) {
         Write-Host "[ERROR] Preflight failed: Required CLI authentication or repository ownership checks failed." -ForegroundColor Red
 

@@ -23,7 +23,7 @@ Tenant Root Group
 │   │  │     └─ rg-mgmt-identity-cus-01 # CI/CD Bootstrap, UMI, & OIDC Trust Foundation
 │   │  └─ mg-contoso-us-operations
 │   │     └─ sub-contoso-us-operations (Subscription)
-│   │        └─ rg-mgmt-logs-prod-cus-01 # Central Log Analytics, Automation, & Monitor Dashboards
+│   │        └─ rg-ops-logs-prod-cus-01 # Central Log Analytics, Automation, & Monitor Dashboards
 │   └─ mg-contoso-us-landingzones
 │      ├─ mg-contoso-us-corp
 │      │  └─ sub-contoso-us-corp (Subscription)
@@ -45,9 +45,6 @@ azure-landing-zone-iac/
 │       └── deploy-resources.yml    <-- Handles subscription-scoped VNets, NSGs, and workload RGs
 ├── environments/
 │   ├── dev/
-│   │   ├── main.bicep
-│   │   ├── main.bicepparam
-│   │   └── main.bicepparam.example
 │   └── prod/
 │       ├── main.bicep              <-- Master Tenant Orchestration Entry Point
 │       ├── main.bicepparam         <-- Production Single Source of Truth Parameters
@@ -87,7 +84,7 @@ Before executing this deployment, ensure you have the following permissions and 
 * **Tenant Root Scope (`/`):** Owner or User Access Administrator permissions at the Azure AD Tenant root scope to create top-level Management Groups and assign tenant-level RBAC roles.
 
 #### **Required Tools & Versions:**
-* **PowerShell 7.0+:** Required for cross-platform automation scripts, modern error handling, and robust hash-convergence logic.
+* **PowerShell 7.4+:** Required for cross-platform automation scripts, modern error handling, and robust hash-convergence logic.
 * **Azure CLI (v2.20.0 or higher):** Core cloud management utility (`az`).
 * **Bicep CLI (v0.20+ or latest):** Installed automatically via Azure CLI (`az bicep install`) for template compilation.
 * **GitHub CLI (`gh` v2.0+):** Required for automated secret synchronization, repository context discovery, and OIDC bootstrapping.
@@ -118,7 +115,7 @@ To maintain strict adherence to DRY, Idempotency, and Cloud Governance best prac
 | **Corp Landing Zones** | `corp` | `sub-contoso-us-corp` |
 | **Online Landing Zones** | `online` | `sub-contoso-us-online` |
 | **Identity** | `identity` | `sub-contoso-us-identity` |
-| **Management** | `management` | `sub-contoso-us-management` |
+| **Operations** | `operations` | `sub-contoso-us-operations` |
 ---
 * **Single Source of Truth (DRY Naming):** Changing `orgName` and `deploymentRegion` at the top of `environments/prod/main.bicepparam` automatically cascades custom naming across all management groups and resource hierarchies. The subscriptionAssociations block at the bottom maps explicit workload domains (such as corp, online, and connectivity), which are then automatically parsed and synchronized with your actual Azure Subscription IDs by the initialization script in Phase 2.
 
@@ -130,7 +127,7 @@ To maintain strict adherence to DRY, Idempotency, and Cloud Governance best prac
 What Initialize-SubscriptionSecrets.ps1 Accomplishes:
 * **Automated Preflight Diagnostics:** Validates active Azure CLI (az) and GitHub CLI (gh) sessions, verifying repository ownership context and failing fast with explicit remediation guides if missing.
 * **Intelligent Context Auto-Discovery:** Natively resolves local Git remote repository metadata (Owner and Repository) to target the correct GitHub environment without hardcoded configurations.
-* **Tenant Subscription Mapping:** Queries active enterprise Azure subscriptions, filtering dynamically across core workload domains (connectivity, corp, online, identity, management) and validating enabled states.
+* **Tenant Subscription Mapping:** Queries active enterprise Azure subscriptions, filtering dynamically across core workload domains (connectivity, corp, online, identity, operations) and validating enabled states.
 * **Idempotent Bicepparam Auto-Population (DRY Architecture):** Programmatically parses and injects discovered subscription IDs directly into target arrays within 'main.bicepparam' without manual input.
 * **Content-Hash Convergence & Zero-Write Optimization:** Evaluates existing file contents before writing, skipping disk mutations if state is already fully synchronized to prevent unnecessary file lock churn.
 * **Structural Diff Auditing:** Employs `git diff --no-index` against a temporary backup to prove isolated parameter modifications and guarantee absolute zero unintended drift.
@@ -159,7 +156,7 @@ What Initialize-TenantOidc.ps1 Accomplishes:
 * **Execution Workflow:** The parameter file feeds directly into the tenant-level Bicep orchestration template (`main.bicep`), driving data-driven creation of management groups, governance policies, and subscription associations.
 * **Pipeline Monitoring & Verification:** Execute the following automation command block via the GitHub CLI to trigger the deployment workflow, stream real-time execution status, validate convergence, and automatically dump logs if any failure occurs:
 ```powershell
-gh workflow run deploy.yml; gh run watch --exit-status; gh run view $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') --log-failed
+gh workflow run deploy-foundation.yml; gh run watch --exit-status; gh run view $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId') --log-failed
 ```
 ### Post-Deployment Verification
 To empirically verify that your tenant-level orchestration, policy assignments, and subscription associations have successfully converged, execute the following Azure CLI verification commands:

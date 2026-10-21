@@ -70,7 +70,7 @@ module level1ManagementGroups '../../modules/management-groups/managementGroup.b
   ]
 }]
 
-// 1C. Level 2 Leaf Child Groups (corp, online, connectivity, identity, management)
+// 1C. Level 2 Leaf Child Groups (corp, online, connectivity, identity, operations)
 module level2ManagementGroups '../../modules/management-groups/managementGroup.bicep' = [for mg in managementGroups: if (mg.name != rootMgName && mg.parentMgId != '/providers/Microsoft.Management/managementGroups/${rootMgName}') {
   name: take('deploy-l2-${mg.name}', 64)
   params: {
