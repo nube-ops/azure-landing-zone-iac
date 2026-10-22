@@ -78,7 +78,7 @@ azure-landing-zone-iac/
 ```
 
 ### Prerequisites
-Before executing this deployment, ensure you have the following permissions and tools configured:
+Minimum tool versions are defined in `scripts/common/prerequisites.psd1` and enforced by: `./scripts/bootstrap/Test-Prerequisites.ps1`
 
 #### **Permissions:**
 * **Tenant Root Scope (`/`):** Owner or User Access Administrator permissions at the Azure AD Tenant root scope to create top-level Management Groups and assign tenant-level RBAC roles.
