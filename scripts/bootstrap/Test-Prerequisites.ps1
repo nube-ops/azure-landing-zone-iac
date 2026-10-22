@@ -4,5 +4,5 @@
 #>
 [CmdletBinding()]
 param()
-. (Join-Path $PSScriptRoot '../common/Import-BootstrapCommon.ps1')
+. (Join-Path $PSScriptRoot '../common/Import-Libraries.ps1')
 Assert-Preflight (Test-Tooling)

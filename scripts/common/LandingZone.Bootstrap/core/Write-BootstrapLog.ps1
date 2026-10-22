@@ -4,7 +4,7 @@ function Write-BootstrapLog {
         The single place bootstrap output is formatted. Prints only; never throws.
     .NOTES
         Stopping is the caller's decision (see Assert-Preflight). In GitHub Actions,
-        Warning/Error levels also emit workflow annotations.
+        Warning and Error levels also emit workflow annotations.
     #>
     [CmdletBinding()]
     param(

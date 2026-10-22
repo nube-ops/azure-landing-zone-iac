@@ -1,4 +1,4 @@
-BeforeAll { . (Join-Path $PSScriptRoot '../../scripts/common/Import-BootstrapCommon.ps1') }
+BeforeAll { . (Join-Path $PSScriptRoot '../../scripts/common/Import-Libraries.ps1') }
 
 Describe 'Get-GitHubRepoContext' {
     It 'parses repo names containing dots' {

@@ -20,7 +20,8 @@ function Test-GitHubSession {
         return New-CheckResult 'GitHubSession' $false 'gh not installed' 'winget install --id GitHub.Cli'
     }
     $null = gh auth status 2>&1
-    New-CheckResult 'GitHubSession' ($LASTEXITCODE -eq 0) 'authenticated' `
+    $ok = ($LASTEXITCODE -eq 0)
+    New-CheckResult 'GitHubSession' $ok $(if ($ok) { 'authenticated' } else { 'not authenticated' }) `
         'gh auth login (GitHub.com, HTTPS, web browser, complete MFA)'
 }
 
