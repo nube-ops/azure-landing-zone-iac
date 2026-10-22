@@ -1,61 +1,54 @@
-function Test-TargetSubscription {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string]$SubscriptionId,
-        [Parameter(Mandatory)][string]$TenantId
-    )
-    $name = "TargetSubscription:$SubscriptionId"
-    $sub  = Invoke-AzQuery -Argument 'account', 'show', '--subscription', $SubscriptionId
-
-    if (-not $sub) {
-        return New-CheckResult $name $false 'not visible to the signed-in account' `
-            'Confirm the ID with: az account list --all'
-    }
-    $tenantMatch = $sub.tenantId -eq $TenantId
-    New-CheckResult $name ($sub.state -eq 'Enabled' -and $tenantMatch) `
-        "state=$($sub.state), tenantMatch=$tenantMatch" `
-        'Enable the subscription, or sign in to its tenant: az login --tenant <tenant-id>'
+function Test-SubscriptionEnabled {
+    [CmdletBinding()] param([Parameter(Mandatory)]$Config, [Parameter(Mandatory)][string]$Workload)
+    $name = "Subscription[$Workload].Enabled"
+    $id   = $Config.SubscriptionIds[$Workload]
+    try   { $sub = Invoke-AzQuery -Arguments 'account', 'show', '--subscription', $id }
+    catch { return New-CheckResult -Name $name -Passed $false -Message "Cannot read $id." `
+                -Remediation "Check the ID in main.bicepparam and that your 'az login' tenant can see it." }
+    $ok = $sub.state -eq 'Enabled'
+    New-CheckResult -Name $name -Passed $ok -Message "$($sub.name) is $($sub.state)." `
+        -Remediation 'Re-enable the subscription or fix the ID in main.bicepparam.'
 }
 
-function Test-ProviderRegistered {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string]$SubscriptionId,
-        [Parameter(Mandatory)][string[]]$Namespace
-    )
-    foreach ($ns in $Namespace) {
-        $provider = Invoke-AzQuery -Argument 'provider', 'show', '--namespace', $ns, '--subscription', $SubscriptionId
-        $state    = if ($provider.registrationState) { $provider.registrationState } else { 'unknown' }
-        New-CheckResult "Provider:${ns}:$SubscriptionId" ($state -eq 'Registered') "state=$state" `
-            "az provider register --namespace $ns --subscription $SubscriptionId --wait"
+function Test-SubscriptionInManagementGroup {
+    [CmdletBinding()] param([Parameter(Mandatory)]$Config, [Parameter(Mandatory)][string]$Workload)
+    $name = "Subscription[$Workload].ManagementGroup"
+    $mg   = "$($Config.RootMgName)-$Workload"
+    try {
+        $null = Invoke-AzQuery -Arguments 'account', 'management-group', 'subscription', 'show',
+                                          '--name', $mg, '--subscription', $Config.SubscriptionIds[$Workload]
+        New-CheckResult -Name $name -Passed $true -Message "Associated with $mg."
+    } catch {
+        New-CheckResult -Name $name -Passed $false -Message "Not found under $mg." `
+            -Remediation 'Re-run the foundation deployment (deploy-foundation.yml); phase 4 did not complete for this subscription.'
     }
 }
 
-function Test-AzureActionAllowed {
-    <# Pure function: does any permission entry allow the action and not exclude it? #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][AllowNull()][object[]]$Permission,
-        [Parameter(Mandatory)][string]$Action
-    )
-    foreach ($p in $Permission) {
-        $allowed = @($p.actions)    | Where-Object { $_ -and $Action -like $_ }
-        $denied  = @($p.notActions) | Where-Object { $_ -and $Action -like $_ }
-        if (@($allowed).Count -gt 0 -and @($denied).Count -eq 0) { return $true }
-    }
-    $false
-}
-
-function Test-CanWriteRoleAssignments {
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Scope)
-
+function Test-CallerCanAssignRoles {
+    [CmdletBinding()] param([Parameter(Mandatory)]$Config, [Parameter(Mandatory)][string]$Workload)
+    $name   = "Subscription[$Workload].RoleAssignWrite"
+    $id     = $Config.SubscriptionIds[$Workload]
     $action = 'Microsoft.Authorization/roleAssignments/write'
-    $url    = "https://management.azure.com$Scope/providers/Microsoft.Authorization/permissions?api-version=2022-04-01"
-    $perm   = Invoke-AzQuery -Argument 'rest', '--method', 'get', '--url', $url, '--query', 'value'
+    try {
+        $perm = Invoke-AzQuery -Arguments 'rest', '--method', 'get', '--url',
+            "https://management.azure.com/subscriptions/$id/providers/Microsoft.Authorization/permissions?api-version=2022-04-01"
+    } catch {
+        return New-CheckResult -Name $name -Passed $false -Message 'Could not read effective permissions.' `
+                   -Remediation 'Needs at least Reader on the subscription.'
+    }
+    $allowed = [bool](@($perm.value).Where({ Test-AzureActionAllowed -Action $action -Actions $_.actions -NotActions $_.notActions }))
+    New-CheckResult -Name $name -Passed $allowed `
+        -Message $(if ($allowed) { 'Role assignment write appears allowed (deny assignments and ABAC conditions are not visible here).' }
+                   else          { 'Caller cannot write role assignments.' }) `
+        -Remediation 'Grant Owner or User Access Administrator on the subscription to the account running the bootstrap.'
+}
 
-    $ok = [bool]$perm -and (Test-AzureActionAllowed -Permission @($perm) -Action $action)
-    New-CheckResult "CanWriteRoleAssignments:$Scope" $ok `
-        $(if ($ok) { 'roleAssignments/write is allowed' } else { 'roleAssignments/write not granted' }) `
-        "Need Owner or User Access Administrator at $Scope (activate PIM first if eligible)"
+function Test-ResourceProvidersRegistered {
+    [CmdletBinding()] param([Parameter(Mandatory)]$Config, [Parameter(Mandatory)][string]$Workload)
+    $id = $Config.SubscriptionIds[$Workload]
+    foreach ($ns in 'Microsoft.ManagedIdentity', 'Microsoft.Authorization') {
+        $state = Invoke-AzQuery -Arguments 'provider', 'show', '--namespace', $ns, '--subscription', $id, '--query', 'registrationState'
+        New-CheckResult -Name "Subscription[$Workload].Provider.$ns" -Passed ($state -eq 'Registered') `
+            -Message "$ns is $state." -Remediation "az provider register --namespace $ns --subscription $id"
+    }
 }

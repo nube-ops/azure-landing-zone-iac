@@ -1,18 +1,12 @@
 function Invoke-AzQuery {
-    <#
-    .SYNOPSIS
-        Runs an az command and returns parsed JSON, or $null on any failure.
-    .NOTES
-        Never throws, so every preflight check can report instead of aborting.
-        Takes an argument array (not free-form args) so '--flags' bind safely.
-    .EXAMPLE
-        Invoke-AzQuery -Argument 'account', 'show', '--subscription', $id
-    #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string[]]$Argument)
+    param([Parameter(Mandatory)][string[]]$Arguments)
 
-    $global:LASTEXITCODE = 0
-    $raw = az @Argument --output json 2>$null
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace("$raw")) { return $null }
-    $raw | ConvertFrom-Json
+    $out    = & az @Arguments --output json 2>&1
+    $errors = @($out | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
+    if ($LASTEXITCODE -ne 0) {
+        throw "az $($Arguments -join ' ') failed (exit $LASTEXITCODE): $($errors -join ' ')"
+    }
+    $json = ($out | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }) -join "`n"
+    if ($json) { $json | ConvertFrom-Json }
 }
