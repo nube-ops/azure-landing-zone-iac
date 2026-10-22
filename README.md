@@ -84,10 +84,19 @@ Minimum tool versions are defined in `scripts/common/prerequisites.psd1` and enf
 * **Tenant Root Scope (`/`):** Owner or User Access Administrator permissions at the Azure AD Tenant root scope to create top-level Management Groups and assign tenant-level RBAC roles.
 
 #### **Required Tools & Versions:**
-* **PowerShell 7.4+:** Required for cross-platform automation scripts, modern error handling, and robust hash-convergence logic.
-* **Azure CLI (v2.20.0 or higher):** Core cloud management utility (`az`).
-* **Bicep CLI (v0.20+ or latest):** Installed automatically via Azure CLI (`az bicep install`) for template compilation.
-* **GitHub CLI (`gh` v2.0+):** Required for automated secret synchronization, repository context discovery, and OIDC bootstrapping.
+* **Minimum versions are defined in** `scripts/common/LandingZone.Bootstrap/prerequisites.psd1`. Run the following command to update the table below. 
+```
+`pwsh ./scripts/bootstrap/Test-Prerequisites.ps1`.
+```
+<!-- prerequisites:start -->
+| Tool | Minimum version | Install |
+| :--- | :--- | :--- |
+| PowerShell | 7.4.0 | `winget install --id Microsoft.PowerShell` |
+| az | 2.20.0 | `winget install --id Microsoft.AzureCLI` |
+| bicep | 0.20.0 | `az bicep install` |
+| gh | 2.0.0 | `winget install --id GitHub.Cli` |
+| git | 2.30.0 | `winget install --id Git.Git` |
+<!-- prerequisites:end -->
 
 #### **Security & Best Practices:**
 * **Zero Hardcoded Secrets:** All environment-specific subscription IDs, client IDs, and names are injected dynamically via parameters or parameter files.
