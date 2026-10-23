@@ -15,7 +15,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$ManifestPath = (Join-Path $PSScriptRoot '../common/LandingZone.Bootstrap/prerequisites.psd1'),
+    [string]$ManifestPath = (Join-Path $PSScriptRoot '../LandingZone.Bootstrap/prerequisites.psd1'),
     [string]$ReadmePath   = (Join-Path $PSScriptRoot '../../README.md'),
     [switch]$Check
 )

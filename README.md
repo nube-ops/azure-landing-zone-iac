@@ -84,9 +84,9 @@ Minimum tool versions are defined in `scripts/common/prerequisites.psd1` and enf
 * **Tenant Root Scope (`/`):** Owner or User Access Administrator permissions at the Azure AD Tenant root scope to create top-level Management Groups and assign tenant-level RBAC roles.
 
 #### **Required Tools & Versions:**
-* **Minimum versions are defined in** `scripts/common/LandingZone.Bootstrap/prerequisites.psd1`. Run the following command to update the table below. 
+* **Minimum versions are defined in** `scripts/LandingZone.Bootstrap/prerequisites.psd1`. Run the following command to update the table below. 
 ```
-`pwsh ./scripts/bootstrap/Test-Prerequisites.ps1`.
+pwsh ./scripts/tools/Update-ReadmePrerequisites.ps1
 ```
 <!-- prerequisites:start -->
 | Tool | Minimum version | Install |

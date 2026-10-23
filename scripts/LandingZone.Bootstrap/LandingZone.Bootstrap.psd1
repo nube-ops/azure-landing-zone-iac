@@ -1,0 +1,13 @@
+New-ModuleManifest -Path ./scripts/LandingZone.Bootstrap/LandingZone.Bootstrap.psd1 `
+    -RootModule           'LandingZone.Bootstrap.psm1' `
+    -ModuleVersion        '0.1.0' `
+    -Author               'Osvaldo Ceballos' `
+    -Description          'Preflight checks and bootstrap helpers for the Azure Landing Zone repo.' `
+    -PowerShellVersion    '7.4' `
+    -CompatiblePSEditions 'Core' `
+    -FunctionsToExport    '*' `
+    -CmdletsToExport      @() `
+    -VariablesToExport    @() `
+    -AliasesToExport      @() `
+    -Tags                 'Azure','LandingZone','Bicep','IaC' `
+    -ProjectUri           'https://github.com/<you>/azure-landing-zone-iac'
