@@ -225,6 +225,10 @@ function Assert-Preflight {
     Write-Host '         PREFLIGHT SUMMARY REPORT'          -ForegroundColor Cyan
     Write-Host '========================================'   -ForegroundColor Cyan
     foreach ($c in $Check) {
+        if ($c.Name -eq 'AzureSession') {
+            Write-Host "" 
+        }
+
         if ($c.Ok) { Write-Host "[OK] $($c.Message)"   -ForegroundColor Green }
         else       { Write-Host "[FAIL] $($c.Message)" -ForegroundColor Red }
     }
