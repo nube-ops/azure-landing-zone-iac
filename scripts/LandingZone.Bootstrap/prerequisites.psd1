@@ -1,3 +1,4 @@
+# scripts/LandingZone.Bootstrap/prerequisites.psd1
 @{
     PowerShell = @{ Minimum = '7.4'; Fix = 'winget install --id Microsoft.PowerShell' }
     Tools = @(

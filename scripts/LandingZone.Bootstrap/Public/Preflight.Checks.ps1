@@ -13,21 +13,55 @@
     Stage 2 (target):      Test-GitHubRepoAdmin, Test-TargetSubscription,
                            Test-ProviderRegistered, Test-CanWriteRoleAssignments
     Gate:                  Assert-Preflight
+
+    Prerequisites: tool names, minimum versions and install hints live ONLY in
+    prerequisites.psd1. Test-Tooling reads it, and
+    scripts/tools/Update-ReadmePrerequisites.ps1 renders the README table from it.
+    New-CheckResult is defined once in Private/, not in this file.
 #>
 
 # ---------------------------------------------------------------- Stage 1
 
 function Test-Tooling {
     [CmdletBinding()]
-    param([string[]]$Tool = @('az', 'gh', 'git'))
+    param([string]$ManifestPath = (Join-Path $PSScriptRoot '../prerequisites.psd1'))
 
-    $install = @{ az = 'Microsoft.AzureCLI'; gh = 'GitHub.Cli'; git = 'Git.Git' }
-    foreach ($t in $Tool) {
-        if (Get-Command $t -ErrorAction SilentlyContinue) {
-            New-CheckResult -Name "Tool:$t" -Ok $true -Message "Tooling: '$t' found"
+    try {
+        $manifest = Import-PowerShellDataFile -LiteralPath $ManifestPath -ErrorAction Stop
+    } catch {
+        return New-CheckResult -Name 'Tool:manifest' -Ok $false -Message "Tooling: cannot read manifest '$ManifestPath'" `
+            -Remediation 'Restore scripts/LandingZone.Bootstrap/prerequisites.psd1 or pass -ManifestPath.'
+    }
+
+    # PowerShell is read from the running session; every other tool is probed via '<tool> --version'.
+    $ps = $PSVersionTable.PSVersion
+    $required = @(@{
+        Name    = 'PowerShell'
+        Minimum = $manifest.PowerShell.Minimum
+        Fix     = $manifest.PowerShell.Fix
+        Actual  = [version]"$($ps.Major).$($ps.Minor).$($ps.Patch)"
+    })
+
+    foreach ($t in $manifest.Tools) {
+        $actual = $null
+        if (Get-Command $t.Name -ErrorAction SilentlyContinue) {
+            $text = & $t.Name --version 2>&1 | Out-String
+            if ($text -match '\d+\.\d+(\.\d+)?') { $actual = [version]$Matches[0] }
+        }
+        $required += @{ Name = $t.Name; Minimum = $t.Minimum; Fix = $t.Fix; Actual = $actual }
+    }
+
+    foreach ($r in $required) {
+        $check = "Tool:$($r.Name)"
+        if (-not $r.Actual) {
+            New-CheckResult -Name $check -Ok $false -Message "Tooling: '$($r.Name)' not found or version unreadable" `
+                -Remediation $r.Fix
+        } elseif ($r.Actual -lt [version]$r.Minimum) {
+            New-CheckResult -Name $check -Ok $false `
+                -Message "Tooling: $($r.Name) $($r.Actual) is older than the required $($r.Minimum)" `
+                -Remediation $r.Fix
         } else {
-            $fix = if ($install[$t]) { "winget install --id $($install[$t])" } else { "Install '$t' and retry." }
-            New-CheckResult -Name "Tool:$t" -Ok $false -Message "Tooling: '$t' not found" -Remediation $fix
+            New-CheckResult -Name $check -Ok $true -Message "Tooling: $($r.Name) $($r.Actual) (>= $($r.Minimum))"
         }
     }
 }
@@ -50,12 +84,13 @@ function Test-GitHubSession {
     [CmdletBinding()]
     param()
 
-    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        return New-CheckResult -Name 'GitHubSession' -Ok $false -Message "GitHub CLI: 'gh' not installed" `
-            -Remediation 'winget install --id GitHub.Cli'
-    }
-    $null = gh auth status 2>&1
-    if ($LASTEXITCODE -eq 0) {
+    # Success is decided inside the try. If 'gh' is missing the call throws, and a stale
+    # $LASTEXITCODE from an earlier command must never be read as "authenticated".
+    # A missing 'gh' is reported, with its install hint, by Test-Tooling.
+    $authenticated = $false
+    try { $null = gh auth status 2>&1; $authenticated = ($LASTEXITCODE -eq 0) } catch { }
+
+    if ($authenticated) {
         return New-CheckResult -Name 'GitHubSession' -Ok $true -Message 'GitHub CLI: authenticated'
     }
     New-CheckResult -Name 'GitHubSession' -Ok $false -Message 'GitHub CLI: not authenticated' `

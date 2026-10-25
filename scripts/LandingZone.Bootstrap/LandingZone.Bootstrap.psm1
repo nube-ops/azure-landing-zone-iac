@@ -3,7 +3,7 @@
 #   Private/ = internal helpers (not exported)
 #   Public/  = every function defined here is exported automatically
 
-$publicFunctions = @()
+$publicFunctions = [System.Collections.Generic.List[string]]::new()
 
 foreach ($folder in 'Private', 'Public') {
     $files = Get-ChildItem -Path (Join-Path $PSScriptRoot $folder) -Filter '*.ps1' -File -ErrorAction SilentlyContinue
@@ -12,12 +12,15 @@ foreach ($folder in 'Private', 'Public') {
         catch { throw "LandingZone.Bootstrap: failed to load '$($file.FullName)': $_" }
 
         if ($folder -eq 'Public') {
-            # Parse instead of trusting file names, so multi-function files like Preflight.Checks.ps1 work.
             $ast = [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$null, [ref]$null)
-            $publicFunctions += $ast.FindAll(
-                { param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false).Name
+            $found = $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)
+            foreach ($function in $found) { $publicFunctions.Add($function.Name) }   # an empty file adds nothing
         }
     }
 }
 
-Export-ModuleMember -Function $publicFunctions
+if ($publicFunctions.Count -eq 0) {
+    throw 'LandingZone.Bootstrap: no functions found in Public/. Refusing to load an empty module.'
+}
+
+Export-ModuleMember -Function $publicFunctions.ToArray()
