@@ -1,7 +1,7 @@
-#Requires -Version 7.4
-. (Join-Path $PSScriptRoot '../common/Import-BootstrapCommon.ps1')
-
-$DeployerRoles = @('Contributor')
+Import-Module (Join-Path $PSScriptRoot '../LandingZone.Bootstrap') -Force -ErrorAction Stop
+Assert-Preflight @( Test-Tooling; Test-AzureSession; Test-GitHubSession; Test-BicepParamFile -Path $BicepParamPath )
+$config  = Get-BicepParamConfig -Path $BicepParamPath
+$targets = $Workload | ForEach-Object { [pscustomobject]@{ Workload = $_; SubscriptionId = $config.Subscriptions[$_] } }
 
 # Stage 1: environment-level checks (nothing below can run if these fail)
 $checks  = @()
