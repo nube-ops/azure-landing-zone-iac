@@ -23,7 +23,8 @@ function Get-BicepParamConfig {
     try {
         $log = az bicep build-params --file $Path --outfile $outFile --no-restore 2>&1
         if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $outFile)) {
-            throw "Get-BicepParamConfig: 'az bicep build-params' failed for '$Path'.`n$($log -join "`n")"
+            $problems = @($log | Where-Object { "$_" -notmatch '^WARNING' }) -join "`n"
+            throw "Get-BicepParamConfig: 'az bicep build-params' failed for '$Path'.`n$problems"
         }
         $parameters = (Get-Content -LiteralPath $outFile -Raw | ConvertFrom-Json).parameters
     }
