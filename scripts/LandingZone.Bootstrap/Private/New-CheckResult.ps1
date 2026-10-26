@@ -6,5 +6,5 @@ function New-CheckResult {
         [Parameter(Mandatory)][string]$Message,
         [string]$Remediation
     )
-    [pscustomobject]@{ Name = $Name; Ok = $Ok; Message = $Message; Remediation = $Remediation }
+    [pscustomobject]@{ Name = $Name; Ok = $Ok; Message = $Message; Remediation = $Remediation; Group = $null }
 }

@@ -8,11 +8,8 @@
     results into stages and pass them to Assert-Preflight, which prints one report
     and throws once if anything failed.
 
-    Stage 1 (environment): Test-Tooling, Test-AzureSession, Test-GitHubSession,
-                           Test-GitHubRemote, Test-BicepParamFile
-    Stage 2 (target):      Test-GitHubRepoAdmin, Test-TargetSubscription,
-                           Test-ProviderRegistered, Test-CanWriteRoleAssignments
-    Gate:                  Assert-Preflight
+    Entry points decide which checks run, and in what order.
+    Gate: Assert-Preflight
 
     Prerequisites: tool names, minimum versions and install hints live ONLY in
     prerequisites.psd1. Test-Tooling reads it, and
@@ -99,11 +96,10 @@ function Test-GitHubSession {
 
 function Test-GitHubRemote {
     [CmdletBinding()]
-    param()
+    param([string]$Owner, [string]$Repository)
 
-    # The remote-parsing regex lives only in Resolve-GitHubRepository.
     try {
-        $repo = Resolve-GitHubRepository
+        $repo = Resolve-GitHubRepository -Owner $Owner -Repository $Repository
         New-CheckResult -Name 'GitHubRemote' -Ok $true -Message "Git remote: $($repo.Owner)/$($repo.Repository)"
     } catch {
         New-CheckResult -Name 'GitHubRemote' -Ok $false -Message "Git remote: $($_.Exception.Message)" `
@@ -122,24 +118,30 @@ function Test-BicepParamFile {
         -Remediation 'Pass -BicepParamPath or restore environments/<env>/main.bicepparam.'
 }
 
-# ---------------------------------------------------------------- Stage 2
-
 function Test-GitHubRepoAdmin {
     [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string]$Owner,
-        [Parameter(Mandatory)][string]$Repository
-    )
+    param([string]$Owner, [string]$Repository)
+
+    try { $repo = Resolve-GitHubRepository -Owner $Owner -Repository $Repository }
+    catch {
+        return New-CheckResult -Name 'GitHubRepoAdmin' -Ok $false `
+            -Message "GitHub repo: cannot determine the repository ($($_.Exception.Message))" `
+            -Remediation 'Fix the git remote or pass -GitHubOwner and -GitHubRepository.'
+    }
 
     $isAdmin = $null
-    try { $isAdmin = gh api "repos/$Owner/$Repository" --jq '.permissions.admin' 2>$null } catch { }
+    try { $isAdmin = gh api "repos/$($repo.Owner)/$($repo.Repository)" --jq '.permissions.admin' 2>$null } catch { }
 
     if ($LASTEXITCODE -eq 0 -and "$isAdmin".Trim() -eq 'true') {
-        return New-CheckResult -Name 'GitHubRepoAdmin' -Ok $true -Message "GitHub repo: admin access confirmed on $Owner/$Repository"
+        return New-CheckResult -Name 'GitHubRepoAdmin' -Ok $true `
+            -Message "GitHub repo: admin access confirmed on $($repo.Owner)/$($repo.Repository)"
     }
-    New-CheckResult -Name 'GitHubRepoAdmin' -Ok $false -Message "GitHub repo: admin access not confirmed on $Owner/$Repository" `
-        -Remediation "This gh account needs admin on $Owner/$Repository. Confirm with: gh repo view --json viewerPermission"
+    New-CheckResult -Name 'GitHubRepoAdmin' -Ok $false `
+        -Message "GitHub repo: admin access not confirmed on $($repo.Owner)/$($repo.Repository)" `
+        -Remediation "This gh account needs admin on $($repo.Owner)/$($repo.Repository). Confirm with: gh repo view --json viewerPermission"
 }
+
+# ---------------------------------------------------------------- Stage 2
 
 function Test-TargetSubscription {
     [CmdletBinding()]
@@ -219,19 +221,24 @@ function Test-CanWriteRoleAssignments {
 
 function Assert-Preflight {
     [CmdletBinding()]
-    param([Parameter(Mandatory, Position = 0)][AllowEmptyCollection()][object[]]$Check)
+    param(
+        [Parameter(Mandatory, Position = 0)][AllowEmptyCollection()][object[]]$Check,
+        [Parameter()][string]$Title = 'PREFLIGHT SUMMARY REPORT'
+    )
 
     Write-Host "`n========================================" -ForegroundColor Cyan
-    Write-Host '         PREFLIGHT SUMMARY REPORT'          -ForegroundColor Cyan
+    Write-Host "         $Title"          -ForegroundColor Cyan
     Write-Host '========================================'   -ForegroundColor Cyan
+    $lastGroup = $null
     foreach ($c in $Check) {
-        if ($c.Name -eq 'AzureSession') {
-            Write-Host "" 
+        if ($c.Group -and $c.Group -ne $lastGroup) {
+            Write-Host "`n-- $($c.Group) --" -ForegroundColor DarkCyan
+            $lastGroup = $c.Group
         }
-
         if ($c.Ok) { Write-Host "[OK] $($c.Message)"   -ForegroundColor Green }
         else       { Write-Host "[FAIL] $($c.Message)" -ForegroundColor Red }
     }
+
     Write-Host "========================================`n" -ForegroundColor Cyan
 
     $failed = @($Check | Where-Object { -not $_.Ok })
