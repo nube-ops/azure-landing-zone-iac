@@ -34,9 +34,11 @@ if ($unknown) { throw "Unknown workload(s): $($unknown -join ', '). Available: $
 $stage2Checks = @()
 foreach ($name in $Workload) {
     $id = $config.Subscriptions[$name]
-    $stage2Checks += Test-TargetSubscription      -SubscriptionId $id -TenantId $tenantId
-    $stage2Checks += Test-ProviderRegistered      -SubscriptionId $id -Namespace 'Microsoft.Resources'
-    $stage2Checks += Test-CanWriteRoleAssignments -Scope "/subscriptions/$id"
+    $stage2Checks += @(
+        Test-TargetSubscription      -SubscriptionId $id -TenantId $tenantId
+        Test-ProviderRegistered      -SubscriptionId $id -Namespace 'Microsoft.Resources'
+        Test-CanWriteRoleAssignments -Scope "/subscriptions/$id"
+    ) | ForEach-Object { $_.Group = "$name ($id)"; $_ }
 }
 Assert-Preflight $stage2Checks -Title 'AZURE TARGET & RBAC PREFLIGHT'
 
