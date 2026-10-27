@@ -4,22 +4,28 @@
     Preflight checks for the bootstrap entry points.
 .DESCRIPTION
     Every Test-* function is read-only and returns a result object
-    (Name, Ok, Message, Remediation). None of them throw. Entry points collect the
-    results into stages and pass them to Assert-Preflight, which prints one report
-    and throws once if anything failed.
+    (Name, Ok, Message, Remediation, optional Group). None of them throw.
+    Entry points choose which checks to run and in what order, then pass the
+    results to Assert-Preflight, which prints one report and throws once if
+    anything failed. Use Get-Help <function> for what each check verifies.
 
-    Entry points decide which checks run, and in what order.
-    Gate: Assert-Preflight
-
-    Prerequisites: tool names, minimum versions and install hints live ONLY in
-    prerequisites.psd1. Test-Tooling reads it, and
+    Tool names and minimum versions live only in prerequisites.psd1;
     scripts/tools/Update-ReadmePrerequisites.ps1 renders the README table from it.
-    New-CheckResult is defined once in Private/, not in this file.
+    New-CheckResult is defined once in Private/.
 #>
 
-# ---------------------------------------------------------------- Stage 1
+# ---------------------------------------------------------------- Local environment
+#   Test-Tooling, Test-BicepParamFile
 
 function Test-Tooling {
+    <#
+    .SYNOPSIS
+        Checks that PowerShell and the required CLI tools meet their minimum versions.
+    .DESCRIPTION
+        Reads prerequisites.psd1, compares the running PowerShell version and the
+        '--version' output of each listed tool (az, gh, git) against its minimum, and
+        returns one result per tool with an install hint on failure.
+    #>
     [CmdletBinding()]
     param([string]$ManifestPath = (Join-Path $PSScriptRoot '../prerequisites.psd1'))
 
@@ -63,21 +69,30 @@ function Test-Tooling {
     }
 }
 
-function Test-AzureSession {
+function Test-BicepParamFile {
+    <#
+    .SYNOPSIS
+        Checks that the Bicep parameter file exists.
+    #>
     [CmdletBinding()]
-    param()
+    param([Parameter(Mandatory)][string]$Path)
 
-    # A token request detects an expired session; 'az account show' reads the cache and would not.
-    $tenant = $null
-    try { $tenant = az account get-access-token --resource https://management.azure.com/ --query tenant --output tsv 2>$null } catch { }
-
-    if ($LASTEXITCODE -eq 0 -and $tenant) {
-        return New-CheckResult -Name 'AzureSession' -Ok $true -Message "Azure CLI: live session (tenant $($tenant.Trim()))"
+    if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        return New-CheckResult -Name 'BicepParamFile' -Ok $true -Message "Parameter file: $Path"
     }
-    New-CheckResult -Name 'AzureSession' -Ok $false -Message 'Azure CLI: no live session' -Remediation "Run 'az login' and retry."
+    New-CheckResult -Name 'BicepParamFile' -Ok $false -Message "Parameter file not found: $Path" `
+        -Remediation 'Pass -BicepParamPath or restore environments/<env>/main.bicepparam.'
 }
 
+# ---------------------------------------------------------------- GitHub
+#   Test-GitHubSession, Test-GitHubRemote, Test-GitHubRepoAdmin
+
 function Test-GitHubSession {
+    <#
+    .SYNOPSIS
+        Checks that the GitHub CLI is authenticated.
+    #>
+
     [CmdletBinding()]
     param()
 
@@ -95,6 +110,10 @@ function Test-GitHubSession {
 }
 
 function Test-GitHubRemote {
+    <#
+    .SYNOPSIS
+        Checks that the owner and repository can be resolved from parameters or the git remote.
+    #>
     [CmdletBinding()]
     param([string]$Owner, [string]$Repository)
 
@@ -107,18 +126,11 @@ function Test-GitHubRemote {
     }
 }
 
-function Test-BicepParamFile {
-    [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$Path)
-
-    if (Test-Path -LiteralPath $Path -PathType Leaf) {
-        return New-CheckResult -Name 'BicepParamFile' -Ok $true -Message "Parameter file: $Path"
-    }
-    New-CheckResult -Name 'BicepParamFile' -Ok $false -Message "Parameter file not found: $Path" `
-        -Remediation 'Pass -BicepParamPath or restore environments/<env>/main.bicepparam.'
-}
-
 function Test-GitHubRepoAdmin {
+    <#
+    .SYNOPSIS
+        Checks that the signed-in GitHub account has admin on the repository.
+    #>
     [CmdletBinding()]
     param([string]$Owner, [string]$Repository)
 
@@ -141,9 +153,34 @@ function Test-GitHubRepoAdmin {
         -Remediation "This gh account needs admin on $($repo.Owner)/$($repo.Repository). Confirm with: gh repo view --json viewerPermission"
 }
 
+# ---------------------------------------------------------------- Azure
+#   Test-AzureSession, Test-TargetSubscription, Test-ProviderRegistered, Test-CanWriteRoleAssignments
+function Test-AzureSession {
+    <#
+    .SYNOPSIS
+        Checks for a live Azure CLI session by requesting an access token.
+    #>
+    [CmdletBinding()]
+    param()
+
+    # A token request detects an expired session; 'az account show' reads the cache and would not.
+    $tenant = $null
+    try { $tenant = az account get-access-token --resource https://management.azure.com/ --query tenant --output tsv 2>$null } catch { }
+
+    if ($LASTEXITCODE -eq 0 -and $tenant) {
+        return New-CheckResult -Name 'AzureSession' -Ok $true -Message "Azure CLI: live session (tenant $($tenant.Trim()))"
+    }
+    New-CheckResult -Name 'AzureSession' -Ok $false -Message 'Azure CLI: no live session' -Remediation "Run 'az login' and retry."
+}
+
+
 # ---------------------------------------------------------------- Stage 2
 
 function Test-TargetSubscription {
+    <#
+    .SYNOPSIS
+        Checks that a subscription is visible, enabled and in the session’s tenant.
+    #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$SubscriptionId,
@@ -172,6 +209,10 @@ function Test-TargetSubscription {
 }
 
 function Test-ProviderRegistered {
+    <#
+    .SYNOPSIS
+        Checks that a resource provider is registered in a subscription.
+    #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$SubscriptionId,
@@ -190,6 +231,10 @@ function Test-ProviderRegistered {
 }
 
 function Test-CanWriteRoleAssignments {
+    <#
+    .SYNOPSIS
+        Checks the caller’s effective permissions allow role assignment writes at a scope.
+    #>
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Scope)
 
@@ -220,6 +265,10 @@ function Test-CanWriteRoleAssignments {
 # ---------------------------------------------------------------- Gate
 
 function Assert-Preflight {
+    <#
+    .SYNOPSIS
+        Prints a titled report of check results and throws if any failed.
+    #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory, Position = 0)][AllowEmptyCollection()][object[]]$Check,
