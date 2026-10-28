@@ -277,7 +277,7 @@ function Assert-Preflight {
 
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "         $Title"          -ForegroundColor Cyan
-    Write-Host '========================================'   -ForegroundColor Cyan
+    Write-Host "========================================"   -ForegroundColor Cyan
     $lastGroup = $null
     foreach ($c in $Check) {
         if ($c.Group -and $c.Group -ne $lastGroup) {
@@ -297,5 +297,5 @@ function Assert-Preflight {
         throw "Bootstrap aborted: $($failed.Count) preflight check(s) failed."
     }
 
-    Write-Host '[SUCCESS] All preflight checks passed: $Title.' -ForegroundColor Green
+    Write-Host "[SUCCESS] All preflight checks passed: $Title." -ForegroundColor Green
 }
