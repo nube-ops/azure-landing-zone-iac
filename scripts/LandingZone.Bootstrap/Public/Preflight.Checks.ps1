@@ -84,7 +84,36 @@ function Test-BicepParamFile {
         -Remediation 'Pass -BicepParamPath or restore environments/<env>/main.bicepparam.'
 }
 
-Test-Json -Json (Get-Content $path -Raw) -SchemaFile $schemaPath -ErrorAction Stop
+function Test-JsonFile {
+    <#
+    .SYNOPSIS
+        Checks that a JSON file exists and validates against its JSON Schema.
+    .DESCRIPTION
+        The schema defaults to '<name>.schema.json' beside the file
+        (workloads.json -> workloads.schema.json), so callers pass one path.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [string]$SchemaPath = ($Path -replace '\.json$', '.schema.json')
+    )
+
+    $name = "JsonFile:$(Split-Path $Path -Leaf)"
+    foreach ($f in $Path, $SchemaPath) {
+        if (-not (Test-Path -LiteralPath $f -PathType Leaf)) {
+            return New-CheckResult -Name $name -Ok $false -Message "JSON config: file not found: $f" `
+                -Remediation "Restore '$f' from the repository."
+        }
+    }
+
+    try {
+        $null = Test-Json -Json (Get-Content -LiteralPath $Path -Raw) -SchemaFile $SchemaPath -ErrorAction Stop
+        New-CheckResult -Name $name -Ok $true -Message "JSON config: $(Split-Path $Path -Leaf) matches $(Split-Path $SchemaPath -Leaf)"
+    } catch {
+        New-CheckResult -Name $name -Ok $false -Message "JSON config: $(Split-Path $Path -Leaf) is invalid: $($_.Exception.Message)" `
+            -Remediation "Fix '$Path' to satisfy '$SchemaPath'."
+    }
+}
 
 # ---------------------------------------------------------------- GitHub
 #   Test-GitHubSession, Test-GitHubRemote, Test-GitHubRepoAdmin
