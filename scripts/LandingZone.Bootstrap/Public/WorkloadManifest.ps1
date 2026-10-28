@@ -1,18 +1,22 @@
-# Drop into LandingZone.Bootstrap (e.g. Public/WorkloadManifest.ps1) and export both functions.
+# scripts/LandingZone.Bootstrap/Public/WorkloadManifest.ps1
 #
-# Assumed environments/<env>/workloads.json shape (keyed object: O(1) lookup, duplicate keys impossible):
-# {
-#   "workloads": {
-#     "identity":     { "owner": "Identity Core", "costCenter": "CC-3000" },
-#     "connectivity": { "owner": "Networking",    "costCenter": "CC-1000" }
-#   }
-# }
+# Single reader of environments/<env>/workloads.json.
+# Structure and required keys (team.*, tags.Owner, tags.CostCenter) are enforced by
+# workloads.schema.json via Test-JsonFile in preflight Stage 1; this file only resolves data.
+# The preflight adapter (Test-WorkloadTags) lives in Preflight.Checks.ps1.
 
 function Get-WorkloadTags {
     <#
     .SYNOPSIS
-        Single owner of workloads.json semantics: resolves and validates a workload's tags.
-        Throws a descriptive error if the entry is missing or incomplete.
+        Resolves the tag set for a workload from workloads.json.
+    .DESCRIPTION
+        Returns the workload's 'tags' block verbatim, plus two derived tags:
+          Environment : from the -Environment parameter (the environment folder is its source)
+          Domain      : the workload name (matches connectivity.bicep)
+        Derived values are applied last so a stray key in the JSON can never cause drift.
+        Throws a descriptive error if the workload is not defined.
+    .EXAMPLE
+        Get-WorkloadTags -Workload identity -Environment prod -Path .\environments\prod\workloads.json
     #>
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -22,23 +26,19 @@ function Get-WorkloadTags {
         [Parameter(Mandatory)][string]$Path
     )
 
-    $manifest = Get-Content -Path $Path -Raw | ConvertFrom-Json -AsHashtable
+    $manifest = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -AsHashtable
 
     if (-not $manifest.ContainsKey('workloads') -or -not $manifest.workloads.ContainsKey($Workload)) {
         throw "Workload '$Workload' is not defined under 'workloads' in $Path."
     }
 
-    $entry   = $manifest.workloads[$Workload]
-    $missing = @('owner', 'costCenter') | Where-Object { [string]::IsNullOrWhiteSpace($entry[$_]) }
-    if ($missing) {
-        throw "Workload '$Workload' in $Path is missing required field(s): $($missing -join ', ')."
+    # Copy into a plain hashtable so the parsed manifest is never mutated.
+    $tags = @{}
+    foreach ($key in $manifest.workloads[$Workload].tags.Keys) {
+        $tags[$key] = $manifest.workloads[$Workload].tags[$key]
     }
 
-    # Keys mirror the tag-guard initiative (Owner, Environment, CostCenter) plus Domain (as in connectivity.bicep).
-    @{
-        Owner       = $entry.owner
-        Environment = $Environment
-        CostCenter  = $entry.costCenter
-        Domain      = $Workload
-    }
+    $tags['Environment'] = $Environment
+    $tags['Domain']      = $Workload
+    $tags
 }

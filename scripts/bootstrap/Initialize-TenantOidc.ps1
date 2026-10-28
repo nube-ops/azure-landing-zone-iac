@@ -250,8 +250,12 @@ if ($TenantRootManagementGroupId -notmatch '^/providers/Microsoft\.Management/ma
 
 # 4. Bootstrap Resource Group
 Write-Host ""
-Write-Output "Ensuring resource group '$ResourceGroupName' exists in location '$Location'..."
-az group create --name $ResourceGroupName --location $Location --output none
+Import-Module (Join-Path $PSScriptRoot '../LandingZone.Bootstrap') -Force   # near the existing dot-sources
+
+$tags = Get-WorkloadTags -Workload 'identity' -Environment $Environment -Path $WorkloadsPath
+$rg   = Set-ResourceGroup -Name $ResourceGroupName -SubscriptionId $BootstrapSubscriptionId `
+            -Location $Location -Tags $tags
+Write-Host "Resource group '$($rg.Name)': $($rg.Action)" -ForegroundColor Green
 
 # 5. Bootstrap User-Assigned Managed Identity (Safe null-handled check)
 Write-Output "Checking for existing User-Assigned Managed Identity '$IdentityName'..."
