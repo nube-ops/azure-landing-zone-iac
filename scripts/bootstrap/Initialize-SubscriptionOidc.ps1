@@ -63,5 +63,8 @@ $tags        = Get-WorkloadTags -Workload $bootstrapWorkload -Environment $Envir
 $identitySub = $config.Subscriptions[$bootstrapWorkload]
  
 Write-BootstrapLog "Target: $($config.IdentityResourceGroupName) in $($config.PrimaryLocation) (sub $identitySub)"
-Set-ResourceGroup -Name $config.IdentityResourceGroupName -SubscriptionId $identitySub `
+$rg = Set-ResourceGroup -Name $config.IdentityResourceGroupName -SubscriptionId $identitySub `
     -Location $config.PrimaryLocation -Tags $tags
+
+$detail = if ($rg.ChangedTags.Count) { " (tags: $($rg.ChangedTags -join ', '))" } else { '' }
+Write-BootstrapLog "Resource group '$($rg.Name)': $($rg.Action)$detail" -Level Success

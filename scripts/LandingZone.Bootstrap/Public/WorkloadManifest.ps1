@@ -59,9 +59,9 @@ function Test-WorkloadTags {
     # (I haven't seen LandingZone.Bootstrap). Match the shape Test-JsonFile already returns.
     try {
         $null = Get-WorkloadTags @PSBoundParameters
-        New-PreflightResult -Name "Workload '$Workload' tag metadata" -Passed $true
+        <RealConstructor> -Name "Workload '$Workload' tag metadata" -Passed $true
     }
     catch {
-        New-PreflightResult -Name "Workload '$Workload' tag metadata" -Passed $false -Message $_.Exception.Message
+        <RealConstructor> -Name "Workload '$Workload' tag metadata" -Passed $false -Message $_.Exception.Message
     }
 }
