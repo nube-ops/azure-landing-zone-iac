@@ -42,26 +42,3 @@ function Get-WorkloadTags {
         Domain      = $Workload
     }
 }
-
-function Test-WorkloadTags {
-    <#
-    .SYNOPSIS
-        Thin preflight adapter over Get-WorkloadTags. No validation logic lives here (DRY).
-    #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)][string]$Workload,
-        [Parameter(Mandatory)][string]$Environment,
-        [Parameter(Mandatory)][string]$Path
-    )
-
-    # NOTE: New-PreflightResult stands in for however your module builds check objects
-    # (I haven't seen LandingZone.Bootstrap). Match the shape Test-JsonFile already returns.
-    try {
-        $null = Get-WorkloadTags @PSBoundParameters
-        <RealConstructor> -Name "Workload '$Workload' tag metadata" -Passed $true
-    }
-    catch {
-        <RealConstructor> -Name "Workload '$Workload' tag metadata" -Passed $false -Message $_.Exception.Message
-    }
-}

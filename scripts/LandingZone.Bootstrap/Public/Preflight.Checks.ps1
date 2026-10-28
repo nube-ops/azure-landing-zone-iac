@@ -15,7 +15,7 @@
 #>
 
 # ---------------------------------------------------------------- Local environment
-#   Test-Tooling, Test-BicepParamFile, Test-Json
+#   Test-Tooling, Test-BicepParamFile, Test-Json, Test-WorkloadTags
 
 function Test-Tooling {
     <#
@@ -112,6 +112,30 @@ function Test-JsonFile {
     } catch {
         New-CheckResult -Name $name -Ok $false -Message "JSON config: $(Split-Path $Path -Leaf) is invalid: $($_.Exception.Message)" `
             -Remediation "Fix '$Path' to satisfy '$SchemaPath'."
+    }
+}
+
+function Test-WorkloadTags {
+    <#
+    .SYNOPSIS
+        Preflight adapter over Get-WorkloadTags; validation logic lives there (DRY).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Workload,
+        [Parameter(Mandatory)][string]$Environment,
+        [Parameter(Mandatory)][string]$Path
+    )
+
+    $name = "WorkloadTags:$Workload"
+    try {
+        $tags = Get-WorkloadTags @PSBoundParameters
+        New-CheckResult -Name $name -Ok $true `
+            -Message "Workload tags: '$Workload' resolved ($(($tags.Keys | Sort-Object) -join ', '))"
+    }
+    catch {
+        New-CheckResult -Name $name -Ok $false -Message "Workload tags: $($_.Exception.Message)" `
+            -Remediation "Add or fix the '$Workload' entry in '$Path'."
     }
 }
 
