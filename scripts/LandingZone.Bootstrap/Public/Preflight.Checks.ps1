@@ -297,5 +297,5 @@ function Assert-Preflight {
         throw "Bootstrap aborted: $($failed.Count) preflight check(s) failed."
     }
 
-    Write-Host '[SUCCESS] All preflight checks passed.' -ForegroundColor Green
+    Write-Host '[SUCCESS] All preflight checks passed: $Title.' -ForegroundColor Green
 }
