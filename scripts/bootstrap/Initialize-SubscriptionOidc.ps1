@@ -45,5 +45,5 @@ Assert-Preflight $stage2Checks -Title 'AZURE TARGET & RBAC PREFLIGHT'
 Write-Host "Preflight complete for: $($Workload -join ', '). No changes were made." -ForegroundColor Green
 
 $identitySub = $config.Subscriptions['identity']
-$rgName      = "rg-mgmt-identity-$($config.PrimaryRegionCode)-01"
-Set-ResourceGroup -Name $rgName -SubscriptionId $identitySub -Location $config.PrimaryLocation
+Write-BootstrapLog "Target: $($config.IdentityResourceGroupName) in $($config.PrimaryLocation) (sub $identitySub)"
+Set-ResourceGroup -Name $config.IdentityResourceGroupName -SubscriptionId $identitySub -Location $config.PrimaryLocation
