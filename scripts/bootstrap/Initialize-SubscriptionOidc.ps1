@@ -42,7 +42,7 @@ foreach ($name in $Workload) {
 }
 Assert-Preflight $stage2Checks -Title 'AZURE TARGET & RBAC PREFLIGHT'
 
-Write-Host "Preflight complete for: $($Workload -join ', '). No changes were made." -ForegroundColor Green
+Write-BootstrapLog "Preflight complete for: $($Workload -join ', ')." -Level Success
 
 $identitySub = $config.Subscriptions['identity']
 Write-BootstrapLog "Target: $($config.IdentityResourceGroupName) in $($config.PrimaryLocation) (sub $identitySub)"
