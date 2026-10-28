@@ -1,41 +1,27 @@
 #Requires -Version 7.4
-<#
-.SYNOPSIS
-    Root module loader for LandingZone.Bootstrap.
-.DESCRIPTION
-    Dot-sources Private/ then Public/, and exports every function defined at the top
-    level of a Public/ file. Function names are discovered from the script AST, so a
-    single file may define several functions (e.g. Preflight.Checks.ps1) and nothing
-    needs to be listed twice. Add a function = drop it in Public/; no manifest edit.
-#>
-
 $ErrorActionPreference = 'Stop'
 
-function Import-ModuleScript {
-    <# Dot-sources one file and returns the names of the top-level functions it defines. #>
+# Parse each file to learn which functions it defines (so one file may hold several).
+function Get-DefinedFunctionName {
     param([Parameter(Mandatory)][string]$Path)
-
     $parseErrors = $null
     $ast = [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$null, [ref]$parseErrors)
-    if ($parseErrors) {
-        throw "Syntax error in '$Path': $($parseErrors[0].Message) (line $($parseErrors[0].Extent.StartLineNumber))"
+    if ($parseErrors) { throw "Syntax error in '$Path' (line $($parseErrors[0].Extent.StartLineNumber)): $($parseErrors[0].Message)" }
+    $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false) |
+        ForEach-Object Name
+}
+
+$exported = [System.Collections.Generic.List[string]]::new()
+
+foreach ($scope in 'Private', 'Public') {
+    $dir = Join-Path $PSScriptRoot $scope
+    if (-not (Test-Path -LiteralPath $dir)) { continue }
+    foreach ($file in Get-ChildItem -LiteralPath $dir -Filter '*.ps1' -File | Sort-Object Name) {
+        $names = @(Get-DefinedFunctionName -Path $file.FullName)
+        if ($names.Count -eq 0) { Write-Verbose "Skipping '$($file.Name)': defines no functions."; continue }
+        . $file.FullName            # dot-source at MODULE scope, not inside a helper function
+        if ($scope -eq 'Public') { $exported.AddRange([string[]]$names) }
     }
-
-    # $false = top-level definitions only, so nested helper functions stay private
-    $names = $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false).Name
-
-    . $Path
-    return $names
 }
 
-# 1. Private helpers: loaded first, never exported
-foreach ($file in Get-ChildItem -Path (Join-Path $PSScriptRoot 'Private') -Filter '*.ps1' -File -ErrorAction SilentlyContinue | Sort-Object Name) {
-    $null = Import-ModuleScript -Path $file.FullName
-}
-
-# 2. Public API: loaded second, exported
-$publicFunctions = foreach ($file in Get-ChildItem -Path (Join-Path $PSScriptRoot 'Public') -Filter '*.ps1' -File -ErrorAction SilentlyContinue | Sort-Object Name) {
-    Import-ModuleScript -Path $file.FullName
-}
-
-Export-ModuleMember -Function @($publicFunctions)
+Export-ModuleMember -Function $exported.ToArray()

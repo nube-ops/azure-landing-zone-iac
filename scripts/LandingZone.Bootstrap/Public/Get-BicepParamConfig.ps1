@@ -51,10 +51,11 @@ function Get-BicepParamConfig {
     if ($missing) { throw "Get-BicepParamConfig: '$Path' is missing $($missing -join ', ')." }
 
     [pscustomobject]@{
-        OrgName           = $parameters.orgName.value
-        GeoPrefix         = $parameters.geoPrefix.value
-        PrimaryLocation   = $primary.location
-        PrimaryRegionCode = $primary.regionCode
-        Subscriptions     = $subscriptions
+        OrgName                   = $parameters.orgName.value
+        GeoPrefix                 = $parameters.geoPrefix.value
+        PrimaryLocation           = $primary.location
+        PrimaryRegionCode         = $primary.regionCode
+        Subscriptions             = $subscriptions
+        IdentityResourceGroupName = "rg-mgmt-identity-$($primary.regionCode)-01"
     }
 }
