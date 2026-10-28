@@ -1,0 +1,17 @@
+{
+  "$schema": "./workloads.schema.json",
+  "workloads": {
+    "connectivity": {
+      "team": { "name": "Networking", "slug": "net-platform", "role": "Network Contributor" },
+      "tags": { "Owner": "Networking", "CostCenter": "CC-1000" }
+    },
+    "operations": {
+      "team": { "name": "Cloud Operations", "slug": "ops-platform", "role": "Monitoring Contributor" },
+      "tags": { "Owner": "Cloud Operations", "CostCenter": "CC-2000" }
+    },
+    "identity": {
+      "team": { "name": "Identity Core", "slug": "id-platform", "role": "Contributor" },
+      "tags": { "Owner": "Identity Core", "CostCenter": "CC-3000" }
+    }
+  }
+}

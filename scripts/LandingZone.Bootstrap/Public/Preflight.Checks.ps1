@@ -15,7 +15,7 @@
 #>
 
 # ---------------------------------------------------------------- Local environment
-#   Test-Tooling, Test-BicepParamFile
+#   Test-Tooling, Test-BicepParamFile, Test-Json
 
 function Test-Tooling {
     <#
@@ -83,6 +83,8 @@ function Test-BicepParamFile {
     New-CheckResult -Name 'BicepParamFile' -Ok $false -Message "Parameter file not found: $Path" `
         -Remediation 'Pass -BicepParamPath or restore environments/<env>/main.bicepparam.'
 }
+
+Test-Json -Json (Get-Content $path -Raw) -SchemaFile $schemaPath -ErrorAction Stop
 
 # ---------------------------------------------------------------- GitHub
 #   Test-GitHubSession, Test-GitHubRemote, Test-GitHubRepoAdmin

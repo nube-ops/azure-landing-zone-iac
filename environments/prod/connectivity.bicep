@@ -1,27 +1,22 @@
 targetScope = 'subscription'
 
+import { resolveTags } from '../../modules/resource-groups/tags.bicep'
+
 param location string = deployment().location
 param orgName string
 param environment string
 
-@description('Owner tag value injected dynamically from platform-teams.json via pipeline')
-param owner string
-
-@description('Cost center tag value injected dynamically from platform-teams.json via pipeline')
-param costCenter string
+// Workload key: must match its entry in workloads.json and its management group suffix.
+var workload = 'connectivity'
+var tags = resolveTags(loadJsonContent('workloads.json').workloads, workload, environment)
 
 // Reusable module call adhering to DRY and CAF standards
 module connectivityRg '../../modules/resource-groups/resourceGroup.bicep' = {
-  name: 'deploy-connectivity-rg'
+  name: 'deploy-${workload}-rg'
   params: {
     resourceGroupName: 'rg-net-hub-${environment}-${orgName}-01'
     location: location
-    tags: {
-      Environment: environment
-      Owner: owner
-      CostCenter: costCenter
-      Domain: 'connectivity'
-    }
+    tags: tags
   }
 }
 

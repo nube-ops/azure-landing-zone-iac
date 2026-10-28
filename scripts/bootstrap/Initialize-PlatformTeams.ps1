@@ -36,15 +36,16 @@ if (-not (Test-Path $ConfigPath)) {
 $config = Get-Content -Path $ConfigPath -Raw | ConvertFrom-Json
 
 # 3. Iterate through each platform team dynamically for Identity & RBAC Provisioning
-foreach ($team in $config.platformTeams) {
+foreach ($entry in $config.workloads.PSObject.Properties) {
     Write-Host "`n----------------------------------------" -ForegroundColor Cyan
     Write-Host " Processing Platform Team Identity: $($team.name)" -ForegroundColor Cyan
     Write-Host "----------------------------------------" -ForegroundColor Cyan
 
-    $groupName = "SG-$orgName-$($team.slug)-Admins"
-    $mailNickname = $team.mailNickname
-    $roleName = $team.roleName
-    $workloadKey = $team.targetSubscriptionWorkload
+    $workloadKey  = $entry.Name
+    $team         = $entry.Value.team
+    $groupName    = "SG-$orgName-$($team.slug)-Admins"
+    $mailNickname = "$($team.slug)-admins"
+    $roleName     = $team.role
 
     $subIdRegex = "mgName:\s*'[^']*-{0}'\s*subscriptionIds:\s*\[\s*'([^']+)'" -f $workloadKey
     if ($bicepParamContent -match $subIdRegex) {

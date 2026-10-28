@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["workloads"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "workloads": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["team", "tags"],
+        "additionalProperties": false,
+        "properties": {
+          "team": {
+            "type": "object", "required": ["name", "slug", "role"], "additionalProperties": false,
+            "properties": { "name": {"type":"string"}, "slug": {"type":"string","pattern":"^[a-z0-9-]+$"}, "role": {"type":"string"} }
+          },
+          "tags": { "type": "object", "required": ["Owner", "CostCenter"], "additionalProperties": { "type": "string" } }
+        }
+      }
+    }
+  }
+}
