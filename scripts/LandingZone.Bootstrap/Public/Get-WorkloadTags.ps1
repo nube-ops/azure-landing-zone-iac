@@ -17,8 +17,8 @@ function Get-WorkloadTags {
     $entry = (Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json).workloads.$Workload
     if (-not $entry) { throw "No entry for workload '$Workload' in $Path. Add one with a 'tags' block." }
 
-    $tags = @{}
-    foreach ($p in $entry.tags.PSObject.Properties) { $tags[$p.Name] = $p.Value }
+    $tags = @{ Owner = $entry.team.name }                         # default: accountable team
+    foreach ($p in $entry.tags.PSObject.Properties) { $tags[$p.Name] = $p.Value }   # explicit tags win
     $tags['Environment'] = $Environment
     $tags['Domain']      = $Workload
     $tags

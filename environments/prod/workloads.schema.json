@@ -15,7 +15,7 @@
             "type": "object", "required": ["name", "slug", "role"], "additionalProperties": false,
             "properties": { "name": {"type":"string"}, "slug": {"type":"string","pattern":"^[a-z0-9-]+$"}, "role": {"type":"string"} }
           },
-          "tags": { "type": "object", "required": ["Owner", "CostCenter"], "additionalProperties": { "type": "string" } }
+          "tags": { "type": "object", "required": ["CostCenter"], "additionalProperties": { "type": "string" } }
         }
       }
     }
