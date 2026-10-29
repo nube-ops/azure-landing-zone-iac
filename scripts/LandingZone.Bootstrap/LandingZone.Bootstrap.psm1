@@ -12,14 +12,19 @@ function Get-DefinedFunctionName {
 }
 
 $exported = [System.Collections.Generic.List[string]]::new()
+$seen     = [System.Collections.Generic.Dictionary[string, string]]::new([StringComparer]::OrdinalIgnoreCase)
 
 foreach ($scope in 'Private', 'Public') {
     $dir = Join-Path $PSScriptRoot $scope
     if (-not (Test-Path -LiteralPath $dir)) { continue }
     foreach ($file in Get-ChildItem -LiteralPath $dir -Filter '*.ps1' -File | Sort-Object Name) {
         $names = @(Get-DefinedFunctionName -Path $file.FullName)
-        if ($names.Count -eq 0) { Write-Verbose "Skipping '$($file.Name)': defines no functions."; continue }
-        . $file.FullName            # dot-source at MODULE scope, not inside a helper function
+        if ($names.Count -eq 0) { Write-Verbose "..."; continue }
+        foreach ($n in $names) {
+            if ($seen.ContainsKey($n)) { throw "Duplicate function '$n' defined in '$($file.Name)' and '$($seen[$n])'." }
+            $seen[$n] = $file.Name
+        }
+        . $file.FullName           # dot-source at MODULE scope, not inside a helper function
         if ($scope -eq 'Public') { $exported.AddRange([string[]]$names) }
     }
 }
