@@ -14,7 +14,7 @@ var tags = resolveTags(loadJsonContent('workloads.json').workloads, workload, en
 module connectivityRg '../../modules/resource-groups/resourceGroup.bicep' = {
   name: 'deploy-${workload}-rg'
   params: {
-    resourceGroupName: 'rg-net-hub-${environment}-${orgName}-01'
+    resourceGroupName: 'rg-con-hub-${environment}-${orgName}-01'
     location: location
     tags: tags
   }

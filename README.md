@@ -16,7 +16,7 @@ Tenant Root Group
 │   ├─ mg-contoso-us-platform
 │   │  ├─ mg-contoso-us-connectivity
 │   │  │  └─ sub-contoso-us-connectivity (Subscription)
-│   │  │     └─ rg-net-hub-prod-cus-01 # Core Hub VNet, Azure Firewall, VPN Gateways
+│   │  │     └─ rg-con-hub-prod-cus-01 # Core Hub VNet, Azure Firewall, VPN Gateways
 │   │  ├─ mg-contoso-us-identity
 │   │  │  └─ sub-contoso-us-identity (Subscription)
 │   │  │     ├─ rg-core-identity-cus-01 # Core Domain Controllers & Directory Sync
@@ -24,6 +24,7 @@ Tenant Root Group
 │   │  └─ mg-contoso-us-operations
 │   │     └─ sub-contoso-us-operations (Subscription)
 │   │        └─ rg-ops-logs-prod-cus-01 # Central Log Analytics, Automation, & Monitor Dashboards
+│   │        └─ rg-ops-deploy-prod-cus-01 # 
 │   └─ mg-contoso-us-landingzones
 │      ├─ mg-contoso-us-corp
 │      │  └─ sub-contoso-us-corp (Subscription)
@@ -66,7 +67,7 @@ azure-landing-zone-iac/
 │   └── landing-zones/
 ├── scripts/
 │   ├── bootstrap/
-│   │   ├── Initialize-TenantOidc.ps1       <-- Handles Tenant Root & Management Group UMI/OIDC
+│   │   ├── Initialize-TenantOidc.ps1       <-- Handles Tenant Root & Deployer Group UMI/OIDC
 │   │   ├── Initialize-SubscriptionSecrets.ps1 <-- Synchronizes IDs to GitHub Secrets
 │   │   ├── Initialize-SubscriptionOidc.ps1    <-- Handles Subscription-Scoped Workload UMI & RBAC
 │   │   ├── Initialize-PlatformTeams.ps1    <-- Handles Core Identity Foundations

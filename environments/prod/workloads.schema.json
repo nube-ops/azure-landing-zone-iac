@@ -1,9 +1,10 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["workloads"],
+  "required": ["bootstrapWorkload", "workloads"],
   "properties": {
     "$schema": { "type": "string" },
+    "bootstrapWorkload": { "type": "string", "pattern": "^[a-z0-9-]+$" },
     "workloads": {
       "type": "object",
       "additionalProperties": {

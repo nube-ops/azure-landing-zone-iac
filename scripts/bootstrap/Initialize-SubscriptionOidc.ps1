@@ -12,8 +12,6 @@ $ErrorActionPreference = 'Stop'
 
 Import-Module (Join-Path $PSScriptRoot '../LandingZone.Bootstrap') -Force
 
-$bootstrapWorkload = 'identity'
-
 # --- Stage 1: Environment & Tooling Gate ---
 $stage1Checks = @(
     Test-Tooling
@@ -27,6 +25,7 @@ $stage1Checks = @(
 Assert-Preflight $stage1Checks -Title 'ENVIRONMENT & ACCESS PREFLIGHT'
 
 # --- Context (safe now that stage 1 passed) ---
+$bootstrapWorkload = (Get-Content -LiteralPath $WorkloadsPath -Raw | ConvertFrom-Json).bootstrapWorkload
 $config   = Get-BicepParamConfig -Path $BicepParamPath
 $repo     = Resolve-GitHubRepository -Owner $GitHubOwner -Repository $GitHubRepository
 $tenantId = (az account show --query tenantId --output tsv).Trim()
@@ -42,7 +41,7 @@ if ($unknown) {
 
 # --- Stage 2: Azure Target & RBAC Gate ---
 $stage2Checks = @()
-foreach ($name in $Workload) {
+foreach ($name in $targets) {
     $id = $config.Subscriptions[$name]
     $stage2Checks += @(
         Test-TargetSubscription      -SubscriptionId $id -TenantId $tenantId
@@ -55,15 +54,15 @@ foreach ($name in $Workload) {
 $stage2Checks += Test-WorkloadTags -Workload $bootstrapWorkload -Environment $Environment -Path $WorkloadsPath |
     ForEach-Object { $_.Group = "$bootstrapWorkload manifest"; $_ }
 
-Assert-Preflight $stage2Checks -Title 'AZURE TARGET & RBAC PREFLIGHT'
+Assert-Preflight $stage2Checks -Title 'AZURE TARGET, RBAC & MANIFEST PREFLIGHT'
 Write-BootstrapLog "Preflight complete for: $($targets -join ', ')." -Level Success
 Write-Host ''
 
 $tags        = Get-WorkloadTags -Workload $bootstrapWorkload -Environment $Environment -Path $WorkloadsPath
-$identitySub = $config.Subscriptions[$bootstrapWorkload]
+$bootstrapSub = $config.Subscriptions[$bootstrapWorkload]
  
-Write-BootstrapLog "Target: $($config.IdentityResourceGroupName) in $($config.PrimaryLocation) (sub $identitySub)"
-$rg = Set-ResourceGroup -Name $config.IdentityResourceGroupName -SubscriptionId $identitySub `
+Write-BootstrapLog "Target: $($config.IdentityResourceGroupName) in $($config.PrimaryLocation) (sub $bootstrapSub)"
+$rg = Set-ResourceGroup -Name $config.IdentityResourceGroupName -SubscriptionId $bootstrapSub `
     -Location $config.PrimaryLocation -Tags $tags
 
 $detail = if ($rg.ChangedTags.Count) { " (tags: $($rg.ChangedTags -join ', '))" } else { '' }
