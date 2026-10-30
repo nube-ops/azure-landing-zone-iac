@@ -1,37 +1,21 @@
 targetScope = 'subscription'
 
-import { rgName } from '../../modules/resource-groups/naming.bicep'
+import { rgName } from '../../modules/resource-groups/naming.bicep'   // adjust to your path
+import { resolveTags } from '../../modules/resource-groups/tags.bicep'
 
-param location string = deployment().location
 param environment string
 param regionCode string
-param owner string
-param costCenter string
+param location string = deployment().location
 
-var domain = 'ops'
-var tags = {
-  Environment: environment
-  Owner: owner
-  CostCenter: costCenter
-  Domain: 'operations'
-}
+var workloads = loadJsonContent('workloads.json').workloads
 
-// NOTE: rg-ops-deploy-prod-cus-01 is intentionally NOT declared here.
-// Bootstrap owns it (it hosts the pipeline's identity); the pipeline must never be able to delete it.
-
-var logsRgName = rgName(domain, 'logs', environment, regionCode, 1)
-
+// rg-ops-deploy-* is NOT declared here: the bootstrap scripts own it,
+// because the pipeline needs it to authenticate in the first place.
 module logsRg '../../modules/resource-groups/resourceGroup.bicep' = {
-  name: 'deploy-rg-ops-logs'
+  name: 'deploy-ops-logs-rg'
   params: {
-    resourceGroupName: logsRgName
+    resourceGroupName: rgName('ops', 'logs', environment, regionCode, 1)
     location: location
-    tags: tags
+    tags: resolveTags(workloads, 'operations', environment)
   }
 }
-
-// Add resources here as they become real, e.g.:
-// module workspace '../../modules/monitoring/logAnalytics.bicep' = {
-//   scope: resourceGroup(logsRgName)
-//   dependsOn: [logsRg]
-// }

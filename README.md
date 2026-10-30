@@ -16,7 +16,7 @@ Tenant Root Group
 │   ├─ mg-contoso-us-platform
 │   │  ├─ mg-contoso-us-connectivity
 │   │  │  └─ sub-contoso-us-connectivity (Subscription)
-│   │  │     └─ rg-con-hub-prod-cus-01 # Core Hub VNet, Azure Firewall, VPN Gateways
+│   │  │     └─ rg-net-hub-prod-cus-01 # Core Hub VNet, Azure Firewall, VPN Gateways
 │   │  ├─ mg-contoso-us-identity
 │   │  │  └─ sub-contoso-us-identity (Subscription)
 │   │  │     ├─ rg-core-identity-cus-01 # Core Domain Controllers & Directory Sync

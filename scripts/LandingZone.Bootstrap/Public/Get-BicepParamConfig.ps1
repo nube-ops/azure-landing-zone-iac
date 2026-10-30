@@ -56,6 +56,6 @@ function Get-BicepParamConfig {
         PrimaryLocation           = $primary.location
         PrimaryRegionCode         = $primary.regionCode
         Subscriptions             = $subscriptions
-        IdentityResourceGroupName = "rg-mgmt-identity-$($primary.regionCode)-01"
+        IdentityResourceGroupName = "rg-id-mgmt-prod-$($primary.regionCode)-01"
     }
 }

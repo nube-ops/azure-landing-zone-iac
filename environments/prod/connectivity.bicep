@@ -5,16 +5,19 @@ import { resolveTags } from '../../modules/resource-groups/tags.bicep'
 param location string = deployment().location
 param orgName string
 param environment string
+param regionCode string
 
 // Workload key: must match its entry in workloads.json and its management group suffix.
 var workload = 'connectivity'
 var tags = resolveTags(loadJsonContent('workloads.json').workloads, workload, environment)
 
-// Reusable module call adhering to DRY and CAF standards
+// CAF Standard: rg-<domain>-<function>-<env>-<region>-<nn>
+var rgName = 'rg-net-hub-${environment}-${regionCode}-01'
+
 module connectivityRg '../../modules/resource-groups/resourceGroup.bicep' = {
   name: 'deploy-${workload}-rg'
   params: {
-    resourceGroupName: 'rg-con-hub-${environment}-${orgName}-01'
+    resourceGroupName: rgName
     location: location
     tags: tags
   }
